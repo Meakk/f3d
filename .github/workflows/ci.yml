@@ -171,32 +171,4 @@ jobs:
         fetch-depth: 0
         lfs: 'true'
 
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        path: 'source'
-        fetch-depth: 0
-        lfs: 'false'
-
-    - name: Setup LFS data ubuntu
-      if: matrix.os == 'ubuntu-latest'
-      working-directory: ${{github.workspace}}
-      run: cp -r ./lfs_data/data/* ./source/data/
-
-    - name: Setup LFS data windows
-      if: matrix.os == 'windows-latest'
-      working-directory: ${{github.workspace}}
-      run: cp -Recurse -Force ./lfs_data/data/* ./source/data/
-
-    - name: Setup LFS data macos
-      if: matrix.os == 'macos-latest'
-      working-directory: ${{github.workspace}}
-      run: rsync -avzh ./lfs_data/data/ ./source/data/
-
-    - name: Setup Directories
-      working-directory: ${{github.workspace}}
-      run: |
-         mkdir build
-         mkdir install
-
 
