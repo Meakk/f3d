@@ -156,19 +156,4 @@ jobs:
       working-directory: ${{github.workspace}}/dependencies/vtk_build
       run: cmake --build . --parallel 2 --target install --config Release
 
-    - name: Cache LFS data
-      id: cache-lfs
-      uses: actions/cache@v2
-      with:
-        path: lfs_data
-        key: lfs-data-test
-
-    - name: Checkout LFS data
-      if: steps.cache-lfs.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
-      with:
-        path: 'lfs_data'
-        fetch-depth: 0
-        lfs: 'true'
-
 
