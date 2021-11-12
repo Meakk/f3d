@@ -32,7 +32,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: dependencies/occt_install
-        key: occt-test_b-V7_5_1-${{matrix.os}}
+        key: occt-V7_5_1-${{matrix.os}}
 
     # Checkout action does not work with non github repositories:
     # https://github.com/actions/checkout/issues/630
