@@ -109,14 +109,9 @@ public:
     self->ToEnvironmentSpace(transform);
     camera& cam = self->Window.getCamera();
     vector3_t up = { 0, 0, 1 };
-    point3_t pos = cam.getPosition();
     point3_t foc = cam.getFocalPoint();
     point3_t axis, newPos;
 
-    const double dx = foc[0] - pos[0];
-    const double dy = foc[1] - pos[1];
-    const double dz = foc[2] - pos[2];
-    double radius = sqrt(dx * dx + dy * dy + dz * dz);
     switch (view)
     {
       case ViewType::VT_FRONT:
@@ -130,21 +125,21 @@ public:
         up = { 0, -1, 0 };
         break;
       case ViewType::VT_ISOMETRIC:
-        double oneThirdRoot = sqrt(1.0 / 3.0);
-        axis = { -oneThirdRoot, +oneThirdRoot, +oneThirdRoot };
+        axis = { -1, +1, +1 };
         break;
     }
 
     transform->MultiplyPoint(up.data(), up.data());
     transform->MultiplyPoint(axis.data(), axis.data());
 
-    newPos[0] = foc[0] + radius * axis[0];
-    newPos[1] = foc[1] + radius * axis[1];
-    newPos[2] = foc[2] + radius * axis[2];
+    newPos[0] = foc[0] + axis[0];
+    newPos[1] = foc[1] + axis[1];
+    newPos[2] = foc[2] + axis[2];
 
     /* set camera coordinates back */
     cam.setPosition(newPos);
     cam.setViewUp(up);
+    cam.resetToBounds(0.9);
   }
 
   static void OnKeyPress(vtkObject*, unsigned long, void* clientData, void*)
