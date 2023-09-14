@@ -3,6 +3,7 @@ option(F3D_PLUGIN_BUILD_ASSIMP "Assimp plugin (FBX, OFF, DAE anf DXF files)" OFF
 option(F3D_PLUGIN_BUILD_DRACO "Draco plugin (DRC files)" OFF)
 option(F3D_PLUGIN_BUILD_EXODUS "ExodusII plugin (EX2 files)" ON)
 option(F3D_PLUGIN_BUILD_OCCT "OpenCASCADE plugin (STEP and IGES files)" OFF)
+option(F3D_PLUGIN_BUILD_GASP "Gasp plugin (PLY files)" OFF)
 
 add_subdirectory(native)
 
@@ -24,4 +25,8 @@ endif()
 
 if (F3D_PLUGIN_BUILD_OCCT)
   add_subdirectory(occt)
+endif()
+
+if (F3D_PLUGIN_BUILD_GASP)
+  add_subdirectory(gasp)
 endif()

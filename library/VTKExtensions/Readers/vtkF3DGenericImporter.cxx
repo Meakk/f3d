@@ -32,6 +32,8 @@ struct ReaderPipeline
     this->GeometryActor->GetProperty()->SetInterpolationToPBR();
     this->VolumeMapper->SetRequestedRenderModeToGPU();
     this->PolyDataMapper->InterpolateScalarsBeforeMappingOn();
+    this->PointGaussianMapper->SetScaleArray("scale");
+    this->PointGaussianMapper->SetOpacityArray("opacity");
     this->PointGaussianMapper->EmissiveOff();
     this->PointGaussianMapper->SetSplatShaderCode(
       "//VTK::Color::Impl\n"

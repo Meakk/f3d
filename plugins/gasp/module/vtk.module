@@ -1,0 +1,10 @@
+NAME
+  f3d::VTKExtensionsGaspReader
+DESCRIPTION
+  A VTK module for the Gasp plugin
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonExecutionModel
+TEST_DEPENDS
+  VTK::TestingCore
+  VTK::CommonDataModel
