@@ -184,6 +184,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     if (this->UseDepthPeelingPass)
     {
       vtkNew<vtkDualDepthPeelingPass> ddpP;
+      ddpP->SetMaximumNumberOfPeels(1000);
       ddpP->SetTranslucentPass(translucentP);
       ddpP->SetVolumetricPass(volumeP);
       collection->AddItem(ddpP);

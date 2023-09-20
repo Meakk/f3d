@@ -307,7 +307,7 @@ public:
         self->Options.toggle("ui.cheatsheet");
         render = true;
         break;
-      case '?':
+      case '/':
         self->Window.PrintColoringDescription(log::VerboseLevel::INFO);
         self->Window.PrintSceneDescription(log::VerboseLevel::INFO);
         break;

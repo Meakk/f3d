@@ -93,7 +93,11 @@ int vtkF3DGaussianSplattingReader::RequestData(
   std::vector<float> f_rest_1 = plyIn.getElement("vertex").getProperty<float>("f_rest_1");
   std::vector<float> f_rest_2 = plyIn.getElement("vertex").getProperty<float>("f_rest_2");
 
-  auto id = [](float v){ return v; };
+  auto id = [](float x){ return x; };
+
+  auto sigmoid = [](float x) {
+    return 1. / (1. + std::exp(-x));
+  };
 
   vtkNew<vtkPoints> points;
   points->SetDataTypeToFloat();
@@ -101,9 +105,10 @@ int vtkF3DGaussianSplattingReader::RequestData(
   output->SetPoints(points);
   
   output->GetPointData()->SetNormals(ConvertToFloatArray("normals", {nx, ny, nz}, id));
-  output->GetPointData()->SetScalars(ConvertToFloatArray("color", {f_dc_0, f_dc_1, f_dc_2}, [](float v){ return v*0.282094791774 + 0.5; }));
-  output->GetPointData()->AddArray(ConvertToFloatArray("opacity", {opacity}, id));
-  output->GetPointData()->AddArray(ConvertToFloatArray("scale", {scale_0, scale_1, scale_2}, id));
+  output->GetPointData()->SetScalars(ConvertToFloatArray("color", {f_dc_0, f_dc_1, f_dc_2}, [](float x){ return std::clamp(x*0.282094791774 + 0.5, 0., 1.); }));
+  output->GetPointData()->AddArray(ConvertToFloatArray("opacity", {opacity}, sigmoid));
+  output->GetPointData()->AddArray(ConvertToFloatArray("scale", {scale_0, scale_1, scale_2}, [](float x){ return std::exp(x); }));
+  output->GetPointData()->AddArray(ConvertToFloatArray("rotation", {rot_0, rot_1, rot_2, rot_3}, id));
 
   // TODO: spherical harmonics
 

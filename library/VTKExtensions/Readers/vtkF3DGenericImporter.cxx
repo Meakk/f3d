@@ -35,16 +35,16 @@ struct ReaderPipeline
     this->PointGaussianMapper->SetScaleArray("scale");
     this->PointGaussianMapper->SetOpacityArray("opacity");
     this->PointGaussianMapper->EmissiveOff();
-    this->PointGaussianMapper->SetSplatShaderCode(
-      "//VTK::Color::Impl\n"
-      "float dist = dot(offsetVCVSOutput.xy, offsetVCVSOutput.xy);\n"
-      "if (dist > 1.0) {\n"
-      "  discard;\n"
-      "} else {\n"
-      "  float scale = (1.0 - dist);\n"
-      "  ambientColor *= scale;\n"
-      "  diffuseColor *= scale;\n"
-      "}\n");
+    // this->PointGaussianMapper->SetSplatShaderCode(
+    //   "//VTK::Color::Impl\n"
+    //   "float dist = dot(offsetVCVSOutput.xy, offsetVCVSOutput.xy);\n"
+    //   "if (dist > 1.0) {\n"
+    //   "  discard;\n"
+    //   "} else {\n"
+    //   "  float scale = (1.0 - dist);\n"
+    //   "  ambientColor *= scale;\n"
+    //   "  diffuseColor *= scale;\n"
+    //   "}\n");
   }
 
   std::string Name;
@@ -237,6 +237,7 @@ void vtkF3DGenericImporter::ImportActors(vtkRenderer* ren)
     pipe.VolumeProp->SetMapper(pipe.VolumeMapper);
     pipe.GeometryActor->SetMapper(pipe.PolyDataMapper);
     pipe.PointSpritesActor->SetMapper(pipe.PointGaussianMapper);
+    pipe.PointSpritesActor->ForceTranslucentOn();
 
     // add props
     ren->AddActor(pipe.GeometryActor);
