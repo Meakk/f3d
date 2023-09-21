@@ -1,4 +1,5 @@
 set(classes
+  vtkF3DDepthSortPointCloud
   vtkF3DGenericImporter
   vtkF3DMemoryMesh
   vtkF3DPostProcessFilter

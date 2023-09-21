@@ -1,6 +1,7 @@
 #include "loader_impl.h"
 
 #include "animationManager.h"
+#include "camera_impl.h"
 #include "interactor_impl.h"
 #include "log.h"
 #include "options.h"
@@ -11,6 +12,7 @@
 #include "vtkF3DMemoryMesh.h"
 
 #include <vtkCallbackCommand.h>
+#include <vtkF3DDepthSortPointCloud.h>
 #include <vtkProgressBarRepresentation.h>
 #include <vtkProgressBarWidget.h>
 #include <vtkTimerLog.h>
@@ -46,20 +48,20 @@ public:
     progressCallback->SetCallback(
       [](vtkObject*, unsigned long, void* clientData, void* callData)
       {
-        auto progressData = static_cast<ProgressDataStruct*>(clientData);
-        progressData->timer->StopTimer();
-        vtkProgressBarWidget* widget = progressData->widget;
-        // Only show and render the progress bar if loading takes more than 0.15 seconds
-        if (progressData->timer->GetElapsedTime() > 0.15 ||
-          vtksys::SystemTools::HasEnv("CTEST_F3D_PROGRESS_BAR"))
-        {
-          widget->On();
-          vtkProgressBarRepresentation* rep =
-            vtkProgressBarRepresentation::SafeDownCast(widget->GetRepresentation());
-          rep->SetProgressRate(*static_cast<double*>(callData));
-          widget->Render();
-        }
-      });
+      auto progressData = static_cast<ProgressDataStruct*>(clientData);
+      progressData->timer->StopTimer();
+      vtkProgressBarWidget* widget = progressData->widget;
+      // Only show and render the progress bar if loading takes more than 0.15 seconds
+      if (progressData->timer->GetElapsedTime() > 0.15 ||
+        vtksys::SystemTools::HasEnv("CTEST_F3D_PROGRESS_BAR"))
+      {
+        widget->On();
+        vtkProgressBarRepresentation* rep =
+          vtkProgressBarRepresentation::SafeDownCast(widget->GetRepresentation());
+        rep->SetProgressRate(*static_cast<double*>(callData));
+        widget->Render();
+      }
+    });
     importer->AddObserver(vtkCommand::ProgressEvent, progressCallback);
 
     interactor->SetInteractorOn(data->widget);
@@ -227,9 +229,14 @@ loader& loader_impl::loadGeometry(const std::string& filePath, bool reset)
       filePath + " is not a file of a supported file format for default scene");
   }
 
+  vtkNew<vtkF3DDepthSortPointCloud> depthSort;
+  depthSort->SetInputConnection(vtkReader->GetOutputPort());
+  depthSort->SetCamera(static_cast<camera_impl&>(this->Internals->Window.getCamera()).GetVTKCamera());
+ 
   // Read the file
   log::debug("Loading: ", filePath, "\n");
 
+  // pass sorted?
   this->Internals->LoadGeometry(vtksys::SystemTools::GetFilenameName(filePath), vtkReader, reset);
 
   return *this;
