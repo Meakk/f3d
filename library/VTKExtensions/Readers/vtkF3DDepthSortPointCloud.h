@@ -40,7 +40,7 @@ protected:
 
   vtkCamera* Camera;
   double LastDirection[3];
-  std::vector<vtkIdType> Mapping;
+  vtkNew<vtkIdTypeArray> Mapping;
   vtkNew<vtkPolyData> LastPolyData;
 
 private:

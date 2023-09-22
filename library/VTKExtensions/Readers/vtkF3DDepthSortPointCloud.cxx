@@ -26,6 +26,7 @@
 #include "vtkUnsignedLongLongArray.h"
 #include "vtkUnsignedShortArray.h"
 #include "vtkSMPTools.h"
+#include "vtkDataArrayRange.h"
 
 #include <algorithm>
 #include <numeric>
@@ -84,10 +85,11 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
 
   vtkIdType nbPoints = input->GetNumberOfPoints();
 
-  if (this->Mapping.size() != nbPoints)
+  if (this->Mapping->GetNumberOfTuples() != nbPoints)
   {
-    this->Mapping.resize(nbPoints);
-    std::iota(this->Mapping.begin(), this->Mapping.end(), 0);
+    this->Mapping->SetNumberOfTuples(nbPoints);
+    auto rangeInit = vtk::DataArrayValueRange(this->Mapping);
+    std::iota(rangeInit.begin(), rangeInit.end(), 0);
   }
 
   std::cout << "sorting start" << std::endl;
@@ -106,50 +108,20 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
     }
   });
 
-  std::sort(this->Mapping.begin(), this->Mapping.end(), [&](vtkIdType left, vtkIdType right){
+  auto rangeSort = vtk::DataArrayValueRange(this->Mapping);
+  std::sort(rangeSort.begin(), rangeSort.end(), [&](vtkIdType left, vtkIdType right){
     return depths[left] > depths[right];
   });
 
   std::cout << "sorting end" << std::endl;
 
-  vtkNew<vtkFloatArray> arr;
-  arr->SetNumberOfComponents(3);
-  arr->SetNumberOfTuples(nbPoints);
+  this->LastPolyData->SetPoints(input->GetPoints());
+  this->LastPolyData->GetPointData()->ShallowCopy(input->GetPointData());
 
-  for (vtkIdType i = 0; i < nbPoints; i++)
-  {
-    arr->SetTuple(i, this->Mapping[i], input->GetPoints()->GetData());
-  }
-
-  vtkNew<vtkPoints> points;
-  points->SetDataTypeToFloat();
-  points->SetData(arr);
-
-  this->LastPolyData->SetPoints(points);
-
-  vtkPointData* sourcePointData = input->GetPointData();
-  vtkPointData* destPointData = this->LastPolyData->GetPointData();
-
-  for (vtkIdType i = 0; i < sourcePointData->GetNumberOfArrays(); i++)
-  {
-    vtkDataArray* sourceArray = sourcePointData->GetArray(i);
-    vtkDataArray* destArray = sourceArray->NewInstance();
-    destArray->SetNumberOfComponents(sourceArray->GetNumberOfComponents());
-    destArray->SetNumberOfTuples(sourceArray->GetNumberOfTuples());
-    destArray->SetName(sourceArray->GetName());
-
-    for (vtkIdType j = 0; j < nbPoints; j++)
-    {
-      destArray->SetTuple(j, this->Mapping[j], sourceArray);
-    }
-
-    destPointData->AddArray(destArray);
-    destArray->Delete();
-  }
-
-  destPointData->SetActiveScalars(sourcePointData->GetScalars()->GetName());
-
-  std::cout << "finished" << std::endl;
+  // create verts
+  vtkNew<vtkCellArray> verts;
+  verts->SetData(input->GetVerts()->GetOffsetsArray(), this->Mapping);
+  this->LastPolyData->SetVerts(verts);
 
   output->ShallowCopy(this->LastPolyData);
 

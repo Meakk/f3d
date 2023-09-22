@@ -8,8 +8,11 @@
 #include <vtkPointData.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
+#include <vtkDataArrayRange.h>
 
 #include "happly.h"
+
+#include <numeric>
 
 namespace
 {
@@ -112,6 +115,24 @@ int vtkF3DGaussianSplattingReader::RequestData(
 
   // TODO: spherical harmonics
 
+
+  // create verts
+  vtkIdType nbPoints = points->GetNumberOfPoints();
+  vtkNew<vtkIdTypeArray> offsets;
+  vtkNew<vtkIdTypeArray> connectivity;
+  offsets->SetNumberOfTuples(nbPoints + 1);
+  connectivity->SetNumberOfTuples(nbPoints);
+
+  auto offsetRange = vtk::DataArrayValueRange(offsets);
+  std::iota(offsetRange.begin(), offsetRange.end(), 0);
+
+  auto connectivityRange = vtk::DataArrayValueRange(connectivity);
+  std::iota(connectivityRange.begin(), connectivityRange.end(), 0);
+
+  vtkNew<vtkCellArray> verts;
+  verts->SetData(offsets, connectivity);
+
+  output->SetVerts(verts);
 
   return 1;
 }
