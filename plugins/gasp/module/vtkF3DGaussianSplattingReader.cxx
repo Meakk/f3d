@@ -1,5 +1,6 @@
 #include "vtkF3DGaussianSplattingReader.h"
 
+#include <vtkDataArrayRange.h>
 #include <vtkDemandDrivenPipeline.h>
 #include <vtkFloatArray.h>
 #include <vtkInformation.h>
@@ -8,7 +9,6 @@
 #include <vtkPointData.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
-#include <vtkDataArrayRange.h>
 
 #include "happly.h"
 
@@ -17,7 +17,9 @@
 namespace
 {
 template<typename T>
-vtkSmartPointer<vtkFloatArray> ConvertToFloatArray(const std::string& name, const std::vector<std::vector<float>>& components, T func)
+vtkSmartPointer<vtkFloatArray> ConvertToFloatArray(const std::string& name,
+  const std::vector<unsigned int> mapping, const std::vector<std::vector<float> >& components,
+  T func)
 {
   vtkNew<vtkFloatArray> arr;
 
@@ -44,11 +46,42 @@ vtkSmartPointer<vtkFloatArray> ConvertToFloatArray(const std::string& name, cons
   {
     for (size_t j = 0; j < nbPts; j++)
     {
-      arr->SetTypedComponent(j, i, func(components[i][j]));
+      arr->SetTypedComponent(mapping[j], i, func(components[i][j]));
     }
   }
 
   return arr;
+}
+
+std::vector<unsigned int> ComputeMortonCodes(const std::array<std::vector<float>, 3>& components)
+{
+  size_t nbPts = components[0].size();
+  std::vector<unsigned int> codes(nbPts);
+
+  auto morton3D = [](float x, float y, float z) {
+    auto expandBits = [](unsigned int v) {
+      v = (v * 0x00010001u) & 0xFF0000FFu;
+      v = (v * 0x00000101u) & 0x0F00F00Fu;
+      v = (v * 0x00000011u) & 0xC30C30C3u;
+      v = (v * 0x00000005u) & 0x49249249u;
+      return v;
+    };
+
+    x = std::min(std::max(x * 1024.0f, 0.0f), 1023.0f);
+    y = std::min(std::max(y * 1024.0f, 0.0f), 1023.0f);
+    z = std::min(std::max(z * 1024.0f, 0.0f), 1023.0f);
+    unsigned int xx = expandBits((unsigned int)x);
+    unsigned int yy = expandBits((unsigned int)y);
+    unsigned int zz = expandBits((unsigned int)z);
+    return xx * 4 + yy * 2 + zz;
+  };
+
+  for (size_t j = 0; j < nbPts; j++)
+  {
+    codes[j] = morton3D(components[0][j], components[1][j], components[2][j]);
+  }
+
+  return codes;
 }
 }
 
@@ -96,25 +129,35 @@ int vtkF3DGaussianSplattingReader::RequestData(
   std::vector<float> f_rest_1 = plyIn.getElement("vertex").getProperty<float>("f_rest_1");
   std::vector<float> f_rest_2 = plyIn.getElement("vertex").getProperty<float>("f_rest_2");
 
-  auto id = [](float x){ return x; };
+  std::vector<unsigned int> codes = ComputeMortonCodes({ x, y, z });
 
-  auto sigmoid = [](float x) {
-    return 1. / (1. + std::exp(-x));
-  };
+  size_t nbPts = x.size();
+  std::vector<unsigned int> mapping(nbPts);
+  std::iota(mapping.begin(), mapping.end(), 0);
+
+  std::sort(mapping.begin(), mapping.end(),
+    [&](unsigned int left, unsigned int right) { return codes[left] < codes[right]; });
+
+  auto id = [](float x) { return x; };
+
+  auto sigmoid = [](float x) { return 1. / (1. + std::exp(-x)); };
 
   vtkNew<vtkPoints> points;
   points->SetDataTypeToFloat();
-  points->SetData(ConvertToFloatArray("points", {x, y, z}, id));
+  points->SetData(ConvertToFloatArray("points", mapping, { x, y, z }, id));
   output->SetPoints(points);
-  
-  output->GetPointData()->SetNormals(ConvertToFloatArray("normals", {nx, ny, nz}, id));
-  output->GetPointData()->SetScalars(ConvertToFloatArray("color", {f_dc_0, f_dc_1, f_dc_2}, [](float x){ return std::clamp(x*0.282094791774 + 0.5, 0., 1.); }));
-  output->GetPointData()->AddArray(ConvertToFloatArray("opacity", {opacity}, sigmoid));
-  output->GetPointData()->AddArray(ConvertToFloatArray("scale", {scale_0, scale_1, scale_2}, [](float x){ return std::exp(x); }));
-  output->GetPointData()->AddArray(ConvertToFloatArray("rotation", {rot_0, rot_1, rot_2, rot_3}, id));
+
+  output->GetPointData()->SetNormals(ConvertToFloatArray("normals", mapping, { nx, ny, nz }, id));
+  output->GetPointData()->SetScalars(
+    ConvertToFloatArray("color", mapping, { f_dc_0, f_dc_1, f_dc_2 },
+      [](float x) { return std::clamp(x * 0.282094791774 + 0.5, 0., 1.); }));
+  output->GetPointData()->AddArray(ConvertToFloatArray("opacity", mapping, { opacity }, sigmoid));
+  output->GetPointData()->AddArray(ConvertToFloatArray(
+    "scale", mapping, { scale_0, scale_1, scale_2 }, [](float x) { return std::exp(x); }));
+  output->GetPointData()->AddArray(
+    ConvertToFloatArray("rotation", mapping, { rot_0, rot_1, rot_2, rot_3 }, id));
 
   // TODO: spherical harmonics
-
 
   // create verts
   vtkIdType nbPoints = points->GetNumberOfPoints();

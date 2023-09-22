@@ -83,20 +83,11 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
 
   std::cout << "direction=" << direction[0] << " " << direction[1] << " " << direction[2] << std::endl;
 
-  vtkIdType nbPoints = input->GetNumberOfPoints();
-
-  if (this->Mapping->GetNumberOfTuples() != nbPoints)
-  {
-    this->Mapping->SetNumberOfTuples(nbPoints);
-    auto rangeInit = vtk::DataArrayValueRange(this->Mapping);
-    std::iota(rangeInit.begin(), rangeInit.end(), 0);
-  }
-
-  std::cout << "sorting start" << std::endl;
-
   this->LastDirection[0] = direction[0];
   this->LastDirection[1] = direction[1];
   this->LastDirection[2] = direction[2];
+
+  vtkIdType nbPoints = input->GetNumberOfPoints();
 
   std::vector<float> depths(nbPoints);
 
@@ -107,6 +98,15 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
       depths[index] = vtkMath::Dot(input->GetPoint(index), direction);
     }
   });
+
+  if (this->Mapping->GetNumberOfTuples() != nbPoints)
+  {
+    this->Mapping->SetNumberOfTuples(nbPoints);
+    auto rangeInit = vtk::DataArrayValueRange(this->Mapping);
+    std::iota(rangeInit.begin(), rangeInit.end(), 0);
+  }
+
+  std::cout << "sorting start" << std::endl;
 
   auto rangeSort = vtk::DataArrayValueRange(this->Mapping);
   std::sort(rangeSort.begin(), rangeSort.end(), [&](vtkIdType left, vtkIdType right){
