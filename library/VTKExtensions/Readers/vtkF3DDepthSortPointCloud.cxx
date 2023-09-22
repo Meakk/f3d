@@ -25,6 +25,7 @@
 #include "vtkUnsignedLongArray.h"
 #include "vtkUnsignedLongLongArray.h"
 #include "vtkUnsignedShortArray.h"
+#include "vtkSMPTools.h"
 
 #include <algorithm>
 #include <numeric>
@@ -95,8 +96,18 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
   this->LastDirection[1] = direction[1];
   this->LastDirection[2] = direction[2];
 
+  std::vector<float> depths(nbPoints);
+
+  vtkSMPTools::For(0, nbPoints, [&](vtkIdType first, vtkIdType last)
+  {
+    for (vtkIdType index = first; index < last; index++)
+    {
+      depths[index] = vtkMath::Dot(input->GetPoint(index), direction);
+    }
+  });
+
   std::sort(this->Mapping.begin(), this->Mapping.end(), [&](vtkIdType left, vtkIdType right){
-    return vtkMath::Dot(input->GetPoint(left), direction) > vtkMath::Dot(input->GetPoint(right), direction);
+    return depths[left] > depths[right];
   });
 
   std::cout << "sorting end" << std::endl;

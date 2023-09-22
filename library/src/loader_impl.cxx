@@ -236,8 +236,8 @@ loader& loader_impl::loadGeometry(const std::string& filePath, bool reset)
   // Read the file
   log::debug("Loading: ", filePath, "\n");
 
-  // pass sorted?
-  this->Internals->LoadGeometry(vtksys::SystemTools::GetFilenameName(filePath), vtkReader, reset);
+  // sorted?
+  this->Internals->LoadGeometry(vtksys::SystemTools::GetFilenameName(filePath), depthSort, reset);
 
   return *this;
 }
