@@ -110,9 +110,6 @@ int vtkF3DGaussianSplattingReader::RequestData(
   std::vector<float> x = plyIn.getElement("vertex").getProperty<float>("x");
   std::vector<float> y = plyIn.getElement("vertex").getProperty<float>("y");
   std::vector<float> z = plyIn.getElement("vertex").getProperty<float>("z");
-  std::vector<float> nx = plyIn.getElement("vertex").getProperty<float>("nx");
-  std::vector<float> ny = plyIn.getElement("vertex").getProperty<float>("ny");
-  std::vector<float> nz = plyIn.getElement("vertex").getProperty<float>("nz");
   std::vector<float> f_dc_0 = plyIn.getElement("vertex").getProperty<float>("f_dc_0");
   std::vector<float> f_dc_1 = plyIn.getElement("vertex").getProperty<float>("f_dc_1");
   std::vector<float> f_dc_2 = plyIn.getElement("vertex").getProperty<float>("f_dc_2");
@@ -124,10 +121,6 @@ int vtkF3DGaussianSplattingReader::RequestData(
   std::vector<float> rot_1 = plyIn.getElement("vertex").getProperty<float>("rot_1");
   std::vector<float> rot_2 = plyIn.getElement("vertex").getProperty<float>("rot_2");
   std::vector<float> rot_3 = plyIn.getElement("vertex").getProperty<float>("rot_3");
-
-  std::vector<float> f_rest_0 = plyIn.getElement("vertex").getProperty<float>("f_rest_0");
-  std::vector<float> f_rest_1 = plyIn.getElement("vertex").getProperty<float>("f_rest_1");
-  std::vector<float> f_rest_2 = plyIn.getElement("vertex").getProperty<float>("f_rest_2");
 
   std::vector<unsigned int> codes = ComputeMortonCodes({ x, y, z });
 
@@ -147,7 +140,6 @@ int vtkF3DGaussianSplattingReader::RequestData(
   points->SetData(ConvertToFloatArray("points", mapping, { x, y, z }, id));
   output->SetPoints(points);
 
-  output->GetPointData()->SetNormals(ConvertToFloatArray("normals", mapping, { nx, ny, nz }, id));
   output->GetPointData()->SetScalars(
     ConvertToFloatArray("color", mapping, { f_dc_0, f_dc_1, f_dc_2 },
       [](float x) { return std::clamp(x * 0.282094791774 + 0.5, 0., 1.); }));
