@@ -11,6 +11,7 @@
 #include <vtkPolyData.h>
 
 #include "happly.h"
+#include "meshoptimizer.h"
 
 #include <numeric>
 
@@ -53,10 +54,10 @@ vtkSmartPointer<vtkAOSDataArrayTemplate<T>> ConvertToArray(const std::string& na
   return arr;
 }
 
-std::vector<vtkIdType> ComputeMortonCodes(const std::array<std::vector<float>, 3>& components)
+std::vector<unsigned long long> ComputeMortonCodes(const std::array<std::vector<float>, 3>& components)
 {
   size_t nbPts = components[0].size();
-  std::vector<vtkIdType> codes(nbPts);
+  std::vector<unsigned long long> codes(nbPts);
 
   auto morton3D = [](float x, float y, float z) {
     auto expandBits = [](unsigned int v) {
@@ -137,14 +138,37 @@ int vtkF3DGaussianSplattingReader::RequestData(
   // rot_2.resize(3500000);
   // rot_3.resize(3500000);
 
-  std::vector<vtkIdType> codes = ComputeMortonCodes({ x, y, z });
-
   size_t nbPts = x.size();
+
+#define MESHOPTIM 1
+#if MESHOPTIM
+  //meshopt_spatialSortRemap(unsigned int* destination, const float* vertex_positions, size_t vertex_count, size_t vertex_positions_stride)
+  std::vector<float> packed_pos(3 * nbPts);
+  for (int i = 0; i < nbPts; i++)
+  {
+    packed_pos[3 * i] = x[i];
+    packed_pos[3 * i + 1] = y[i];
+    packed_pos[3 * i + 2] = z[i];
+  }
+
+  std::vector<unsigned int> reversed_mapping(nbPts);
+  meshopt_spatialSortRemap(reversed_mapping.data(), packed_pos.data(), nbPts, 3*sizeof(float));
+
+  std::vector<unsigned int> mapping(nbPts);
+
+  for (unsigned int i = 0; i < nbPts; ++i)
+		mapping[reversed_mapping[i]] = i;
+
+#else
+  // optimize using custom Morton code
+  std::vector<unsigned long long> codes = ComputeMortonCodes({ x, y, z });
+
   std::vector<unsigned int> mapping(nbPts);
   std::iota(mapping.begin(), mapping.end(), 0);
 
   std::sort(mapping.begin(), mapping.end(),
     [&](unsigned int left, unsigned int right) { return codes[left] < codes[right]; });
+#endif
 
   auto id = [](float x) { return x; };
 
@@ -163,8 +187,8 @@ int vtkF3DGaussianSplattingReader::RequestData(
     "scale", mapping, std::vector{ scale_0, scale_1, scale_2 }, [](float x) { return std::exp(x); }));
   output->GetPointData()->AddArray(
     ConvertToArray("rotation", mapping, std::vector{ rot_0, rot_1, rot_2, rot_3 }, id));
-  output->GetPointData()->AddArray(
-    ConvertToArray("morton_code", mapping, std::vector{ {codes} }, id));
+  // output->GetPointData()->AddArray(
+  //   ConvertToArray("morton_code", mapping, std::vector{ {codes} }, id));
 
   vtkNew<vtkIdTypeArray> ids;
   ids->SetNumberOfTuples(nbPts);

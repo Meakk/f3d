@@ -5,6 +5,7 @@ DESCRIPTION
 DEPENDS
   VTK::CommonCore
   VTK::CommonExecutionModel
+  meshoptimizer::meshoptimizer
 TEST_DEPENDS
   VTK::TestingCore
   VTK::CommonDataModel

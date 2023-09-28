@@ -11,6 +11,8 @@ else()
   include(f3dPlugin)
 endif()
 
+find_package(meshoptimizer REQUIRED)
+
 f3d_plugin_init()
 
 f3d_plugin_declare_reader(

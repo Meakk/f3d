@@ -237,7 +237,7 @@ void vtkF3DGenericImporter::ImportActors(vtkRenderer* ren)
     pipe.VolumeProp->SetMapper(pipe.VolumeMapper);
     pipe.GeometryActor->SetMapper(pipe.PolyDataMapper);
     pipe.PointSpritesActor->SetMapper(pipe.PointGaussianMapper);
-    pipe.PointSpritesActor->ForceTranslucentOn();
+    //pipe.PointSpritesActor->ForceTranslucentOn();
 
     // add props
     ren->AddActor(pipe.GeometryActor);
