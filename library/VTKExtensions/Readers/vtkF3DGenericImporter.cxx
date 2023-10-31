@@ -32,19 +32,26 @@ struct ReaderPipeline
     this->GeometryActor->GetProperty()->SetInterpolationToPBR();
     this->VolumeMapper->SetRequestedRenderModeToGPU();
     this->PolyDataMapper->InterpolateScalarsBeforeMappingOn();
+    this->PointGaussianMapper->AnisotropicOn();
+    this->PointGaussianMapper->SetBoundScale(3.0);
     this->PointGaussianMapper->SetScaleArray("scale");
+    this->PointGaussianMapper->SetRotationArray("rotation");
     this->PointGaussianMapper->SetOpacityArray("opacity");
     this->PointGaussianMapper->EmissiveOff();
-    // this->PointGaussianMapper->SetSplatShaderCode(
-    //   "//VTK::Color::Impl\n"
-    //   "float dist = dot(offsetVCVSOutput.xy, offsetVCVSOutput.xy);\n"
-    //   "if (dist > 1.0) {\n"
-    //   "  discard;\n"
-    //   "} else {\n"
-    //   "  float scale = (1.0 - dist);\n"
-    //   "  ambientColor *= scale;\n"
-    //   "  diffuseColor *= scale;\n"
-    //   "}\n");
+    //this->PointGaussianMapper->SetSplatShaderCode(
+    //  "//VTK::Color::Impl\n"
+    //  "float dist = 0.3333*dot(offsetVCVSOutput.xy, offsetVCVSOutput.xy);\n"
+    //  "if (dist > 1.0) {\n"
+    //  "  discard;\n"
+    //  "} else {\n"
+    //  "  float scale = (1.0 - dist);\n"
+    //  "  ambientColor *= scale;\n"
+    //  "  diffuseColor *= scale;\n"
+    //  "}\n");
+
+    float lowPass[3] = { 0.3f / (1200.f * 1200.f), 0.f, 0.3f / (797.f * 797.f) };
+    this->PointGaussianMapper->SetLowpassMatrix(lowPass);
+
   }
 
   std::string Name;

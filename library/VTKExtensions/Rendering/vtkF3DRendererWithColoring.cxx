@@ -259,17 +259,10 @@ void vtkF3DRendererWithColoring::SetPointSize(double pointSize)
     return;
   }
 
-  const vtkBoundingBox& bbox = this->Importer->GetGeometryBoundingBox();
-  double gaussianPointSize = 1.0;
-  if (bbox.IsValid())
-  {
-    gaussianPointSize = pointSize * bbox.GetDiagonalLength() * 0.001;
-  }
-
   const auto& psActorsAndMappers = this->Importer->GetPointSpritesActorsAndMappers();
   for (auto& psActorAndMapper : psActorsAndMappers)
   {
-    psActorAndMapper.second->SetScaleFactor(gaussianPointSize);
+    psActorAndMapper.second->SetScaleFactor(pointSize);
   }
 }
 

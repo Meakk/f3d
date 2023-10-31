@@ -36,7 +36,7 @@ protected:
   ~vtkF3DDepthSortPointCloud() override;
 
   int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*) override;
-  void ComputeProjectionVector(double direction[3]);
+  void ComputeProjectionVector(double direction[3]) const;
 
   vtkCamera* Camera;
   double LastDirection[3];

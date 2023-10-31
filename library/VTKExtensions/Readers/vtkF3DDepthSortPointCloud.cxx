@@ -1,30 +1,16 @@
 #include "vtkF3DDepthSortPointCloud.h"
 
 #include "vtkCamera.h"
-#include "vtkCellData.h"
-#include "vtkCharArray.h"
 #include "vtkDataArray.h"
 #include "vtkDoubleArray.h"
-#include "vtkFloatArray.h"
-#include "vtkGenericCell.h"
 #include "vtkIdTypeArray.h"
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
-#include "vtkIntArray.h"
-#include "vtkLongArray.h"
-#include "vtkLongLongArray.h"
 #include "vtkMath.h"
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
 #include "vtkPolyData.h"
 #include "vtkProp3D.h"
-#include "vtkShortArray.h"
-#include "vtkSignedCharArray.h"
-#include "vtkTransform.h"
-#include "vtkUnsignedIntArray.h"
-#include "vtkUnsignedLongArray.h"
-#include "vtkUnsignedLongLongArray.h"
-#include "vtkUnsignedShortArray.h"
 #include "vtkSMPTools.h"
 #include "vtkDataArrayRange.h"
 
@@ -49,7 +35,7 @@ vtkF3DDepthSortPointCloud::~vtkF3DDepthSortPointCloud()
   }
 }
 
-void vtkF3DDepthSortPointCloud::ComputeProjectionVector(double direction[3])
+void vtkF3DDepthSortPointCloud::ComputeProjectionVector(double direction[3]) const
 {
   double* focalPoint = this->Camera->GetFocalPoint();
   double* origin = this->Camera->GetPosition();
@@ -89,38 +75,46 @@ int vtkF3DDepthSortPointCloud::RequestData(vtkInformation* vtkNotUsed(request),
 
   vtkIdType nbPoints = input->GetNumberOfPoints();
 
-  std::vector<float> depths(nbPoints);
+  vtkNew<vtkDoubleArray> depths;
+  depths->SetName("depth");
+  depths->SetNumberOfTuples(nbPoints);
 
   vtkSMPTools::For(0, nbPoints, [&](vtkIdType first, vtkIdType last)
   {
     for (vtkIdType index = first; index < last; index++)
     {
-      depths[index] = vtkMath::Dot(input->GetPoint(index), direction);
+      depths->SetTypedComponent(index, 0, vtkMath::Dot(input->GetPoint(index), direction));
     }
   });
 
   if (this->Mapping->GetNumberOfTuples() != nbPoints)
   {
     this->Mapping->SetNumberOfTuples(nbPoints);
+    this->Mapping->SetName("mapping");
     auto rangeInit = vtk::DataArrayValueRange(this->Mapping);
     std::iota(rangeInit.begin(), rangeInit.end(), 0);
   }
 
-  std::cout << "sorting start" << std::endl;
-
   auto rangeSort = vtk::DataArrayValueRange(this->Mapping);
   std::sort(rangeSort.begin(), rangeSort.end(), [&](vtkIdType left, vtkIdType right){
-    return depths[left] > depths[right];
+    return depths->GetTypedComponent(left, 0) > depths->GetTypedComponent(right, 0);
   });
-
-  std::cout << "sorting end" << std::endl;
 
   this->LastPolyData->SetPoints(input->GetPoints());
   this->LastPolyData->GetPointData()->ShallowCopy(input->GetPointData());
+  this->LastPolyData->GetPointData()->AddArray(depths);
+  this->LastPolyData->GetPointData()->AddArray(this->Mapping);
 
   // create verts
   vtkNew<vtkCellArray> verts;
-  verts->SetData(input->GetVerts()->GetOffsetsArray(), this->Mapping);
+
+  vtkNew<vtkIdTypeArray> offsets;
+  offsets->SetNumberOfTuples(nbPoints + 1);
+
+  auto offsetRange = vtk::DataArrayValueRange(offsets);
+  std::iota(offsetRange.begin(), offsetRange.end(), 0);
+
+  verts->SetData(offsets, this->Mapping);
   this->LastPolyData->SetVerts(verts);
 
   output->ShallowCopy(this->LastPolyData);
