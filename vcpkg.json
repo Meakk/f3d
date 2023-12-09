@@ -1,0 +1,27 @@
+{
+    "name": "f3d",
+    "dependencies": [
+        "alembic",
+        "assimp",
+        "draco",
+        "opencascade",
+        "openexr",
+        "pybind11",
+        "tbb",
+        "usd",
+        {
+            "name": "vtk",
+            "default-features": false,
+            "features": [ "opengl" ]
+        }
+    ],
+    "overrides": [
+        {
+            "$comment": "USD is not compatible with newer versions of TBB",
+            "name": "tbb",
+            "version-string": "2020_U3",
+            "port-version": 8
+        }
+    ],
+    "builtin-baseline": "112b42c680c82c60fb4d37ebf7e959af7fc4e944"
+}
