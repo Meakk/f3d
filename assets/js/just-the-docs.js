@@ -77,7 +77,7 @@ function disableHeadStyleSheets() {
 
 function initSearch() {
   var request = new XMLHttpRequest();
-  request.open('GET', '/pages/Meakk/f3d/assets/js/search-data.json', true);
+  request.open('GET', '/f3d/assets/js/search-data.json', true);
 
   request.onload = function(){
     if (request.status >= 200 && request.status < 400) {
@@ -456,7 +456,7 @@ jtd.getTheme = function() {
 
 jtd.setTheme = function(theme) {
   var cssFile = document.querySelector('[rel="stylesheet"]');
-  cssFile.setAttribute('href', '/pages/Meakk/f3d/assets/css/just-the-docs-' + theme + '.css');
+  cssFile.setAttribute('href', '/f3d/assets/css/just-the-docs-' + theme + '.css');
 }
 
 // Note: pathname can have a trailing slash on a local jekyll server
@@ -475,8 +475,7 @@ function navLink() {
 function scrollNav() {
   const targetLink = navLink();
   if (targetLink) {
-    const rect = targetLink.getBoundingClientRect();
-    document.getElementById('site-nav').scrollBy(0, rect.top - 3*rect.height);
+    targetLink.scrollIntoView({ block: "center" });
     targetLink.removeAttribute('href');
   }
 }
