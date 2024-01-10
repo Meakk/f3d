@@ -11,14 +11,12 @@ Here is a non exhaustive list of F3D limitations:
 * The `--camera-zoom-factor` option require VTK >= 9.3.0
 
 ## Assimp
-FBX, DAE, OFF, DXF, X and 3MF file formats rely on [Assimp](https://github.com/assimp/assimp) library. It comes with some known limitations:
+FBX, DAE, OFF, DXF and X file formats rely on [Assimp](https://github.com/assimp/assimp) library. It comes with some known limitations:
 - PBR materials are not supported for FBX file format.
 - Complex animations are not working very well with Assimp 5.1, it's recommended to use Assimp 5.0 for this use case.
 - Only one animation can be shown at a time, showing all animations is not supported yet.
 - Some files can be empty, crash, or show artifacts.
 - DXF support is very limited: only files with polylines and 3D faces are displayed.
-- 3MF files may crash at exit (issue in Assimp: https://github.com/assimp/assimp/issues/5328)
-- Only support RBGA 8-bits embedded textures
 
 ## Alembic
 ABC file formats rely on [Alembic](https://github.com/alembic/alembic) library. It comes with some known limitations:
@@ -55,10 +53,6 @@ Your data probably contains some translucent data for some reason, turn on trans
 > I have a link error related to `stdc++fs` not found.
 
 With some C++ STD library version, explicit linking to `stdc++fs` is not supported. We provide a CMake option `F3D_LINUX_APPLICATION_LINK_FILESYSTEM` that you can set to `OFF` to workaround this issue.
-
-> I have a link error related to undefined reference to symbol of `libatomic`.
-
-The GCC flag `-latomic` is not being added automatically with specific architectures, like `armel` and `RISCV64`. We provide a CMake option `F3D_LINUX_LIBRARY_LINK_ATOMIC` that you can set to `ON` to workaround this issue.
 
 > Thumbnails are not working in my file manager.
 
