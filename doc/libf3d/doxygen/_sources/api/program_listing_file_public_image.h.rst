@@ -56,6 +56,8 @@ Program Listing for File image.h
      bool operator==(const image& reference) const;
      bool operator!=(const image& reference) const;
    
+     static std::vector<std::string> getSupportedFormats();
+   
    
      unsigned int getWidth() const;
      unsigned int getHeight() const;
@@ -86,6 +88,10 @@ Program Listing for File image.h
      void save(const std::string& path, SaveFormat format = SaveFormat::PNG) const;
    
      std::vector<unsigned char> saveBuffer(SaveFormat format = SaveFormat::PNG) const;
+   
+     const f3d::image& toTerminalText(std::ostream& stream) const;
+   
+     std::string toTerminalText() const;
    
      struct write_exception : public exception
      {
