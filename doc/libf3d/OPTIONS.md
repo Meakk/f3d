@@ -23,6 +23,7 @@ scene.animation.speed-factor|double<br>1<br>render|Set the animation speed facto
 scene.animation.frame-rate|double<br>60<br>render|Set the animation frame rate used to play the animation interactively.|\-\-animation-frame-rate
 scene.camera.index|int<br>-1<br>load|Select the scene camera to use when available in the file.<br>Any negative value means automatic camera.<br>The default scene always uses automatic camera.|\-\-camera-index
 scene.up-direction|string<br>+Y<br>load|Define the Up direction|\-\-up
+scene.camera.orthographic|bool<br>false<br>load|Toggles between orthographic projection and parallel mode.|\-\-camera\-orthographic
 
 ## Interactor Options
 
@@ -52,6 +53,7 @@ model.scivis.component|int<br>-1<br>render|Specify the component to color with. 
 model.scivis.array-name|string<br>\<reserved\><br>render|*Color by a specific data array* present in on the data. Set to <empty> to let libf3d find the first available array.|\-\-scalars
 model.scivis.range|vector\<double\><br>-<br>render|Set a *custom range for the coloring*.|\-\-range
 model.point-sprites.enable|bool<br>false<br>render|Show sphere *points sprites* instead of the geometry.|\-\-point-sprites
+model.point-sprites.type|string<br>sphere<br>render|Set the sprites type when showing point sprites (can be `sphere` or `gaussian`).|\-\-point-type
 model.volume.enable|bool<br>false<br>render|Enable *volume rendering*. It is only available for 3D image data (vti, dcm, nrrd, mhd files) and will display nothing with other default scene formats.|\-\-volume
 model.volume.inverse|bool<br>false<br>render|Inverse the linear opacity function.|\-\-inverse
 
@@ -66,7 +68,6 @@ render.effect.tone-mapping|bool<br>false<br>render|Enable generic filmic *Tone M
 render.line-width|double<br>1.0<br>render|Set the *width* of lines when showing edges.|\-\-line-width
 render.show-edges|bool<br>false<br>render|Show the *cell edges*|\-\-edges
 render.point-size|double<br>10.0<br>render|Set the *size* of points when showing vertices and point sprites.|\-\-point-size
-render.splat-type|string<br>sphere<br>render|Set the splat type when showing point sprites (can be `sphere` or `gaussian`).|\-\-point-type
 render.grid.enable|bool<br>false<br>render|Show *a grid* aligned with the horizontal (orthogonal to the Up direction) plane.|\-\-grid
 render.grid.absolute|bool<br>false<br>render|Position the grid at the *absolute origin* of the model's coordinate system instead of below the model.|\-\-grid
 render.grid.unit|double<br>0<br>render|Set the size of the *unit square* for the grid. If set to non-positive (the default) a suitable value will be automatically computed.|\-\-grid\-unit
