@@ -37,22 +37,34 @@
     };
 
     f3d(Module).then((runtime) => {
+      // automatically load all supported file format readers
       Module.Engine.autoloadPlugins();
-      let eng = new Module.Engine();
 
-      eng.getLoader().loadGeometry('/dragon.vtu');
+      Module.engineInstance = new Module.Engine();
 
-      eng.getOptions().toggle('render.grid.enable');
-      eng.getOptions().toggle('render.effect.anti-aliasing');
-      eng.getOptions().toggle('render.effect.tone-mapping');
+      // setup coloring
+      Module.engineInstance.getOptions().set_string('model.scivis.array-name', 'Colors');
+      Module.engineInstance.getOptions().set_integer('model.scivis.component', -2);
+      Module.engineInstance.getOptions().toggle('model.scivis.cells');
 
-      let main = document.getElementById('main');
+      // making it look nice
+      Module.engineInstance.getOptions().toggle('render.effect.anti-aliasing');
+      Module.engineInstance.getOptions().toggle('render.effect.tone-mapping');
+      Module.engineInstance.getOptions().toggle('interactor.axis');
+
+      // up is +Z on this file
+      Module.engineInstance.getOptions().set_string('scene.up-direction', '+Z')
+
+      Module.engineInstance.getLoader().loadGeometry('/f3d.vtp');
+
+      // setup the window size based on the canvas size
+      const main = document.getElementById('main');
       const scale = window.devicePixelRatio;
+      Module.engineInstance.getWindow().setSize(scale * main.clientWidth, scale * main.clientHeight);
 
-      eng.getWindow().setSize(scale * main.clientWidth, scale * main.clientHeight);
-      eng.getWindow().render();
-
-      eng.getInteractor().start();
+      // do a first render and start the interactor
+      Module.engineInstance.getWindow().render();
+      Module.engineInstance.getInteractor().start();
     }).catch(error => console.error("F3D internal exception: " + Module.getExceptionMessage(error)));
   </script>
 </body>

@@ -5,8 +5,8 @@ if(NOT VTK_VERSION VERSION_GREATER_EQUAL 9.3.20231007)
   message(FATAL_ERROR "Cannot build emscripten bindings with VTK version below 9.3.20231007")
 endif()
 
-set(F3D_WASM_DATA_DIR "${F3D_SOURCE_DIR}/testing/data"
-  CACHE PATH "Data folder to mount in the webassembly root folder")
+set(F3D_WASM_DATA_FILE "${F3D_SOURCE_DIR}/testing/data/f3d.vtp"
+  CACHE PATH "File to copy in the webassembly root virtual filesystem")
 
 add_executable(f3djs F3DEmscriptenBindings.cxx)
 
@@ -19,7 +19,7 @@ target_link_libraries(f3djs PRIVATE libf3d)
 target_link_options(f3djs PRIVATE
   "--bind"
   "-O1"
-  "SHELL:--preload-file ${F3D_WASM_DATA_DIR}@/"
+  "SHELL:--preload-file ${F3D_WASM_DATA_FILE}@/"
   "SHELL:-sEXPORT_NAME=f3d"
   "SHELL:-sALLOW_MEMORY_GROWTH=1"
   "SHELL:-sDEMANGLE_SUPPORT=1"
