@@ -1,0 +1,554 @@
+version https://git-lfs.github.com/spec/v1
+oid sha256:d5aa4901d186902f90e17bf3b5917541cb6cb8cf223bfeea736631df4c047652
+size 60449
+version https://git-lfs.github.com/spec/v1
+oid sha256:77ff230a6267c82b372e83f3fbe56f3590a2e075e449e5445c588cc2957e8071
+size 18700
+version https://git-lfs.github.com/spec/v1
+oid sha256:b9f1c2abb04a79b13cf4c46404264ff5f16091e17bed32c2064fbf095612544b
+size 3003310
+version https://git-lfs.github.com/spec/v1
+oid sha256:8b33a297f13efe1a73bb3b0ec1313d746e27487ca3023dd745e5ddaa320fbfe2
+size 897044
+version https://git-lfs.github.com/spec/v1
+oid sha256:fe9c0c4879a83412f18ba1c4286c62af5c7544650dbaf0f62035470403bcc600
+size 7432
+version https://git-lfs.github.com/spec/v1
+oid sha256:e976ed06d0fbb5b4e92a33ef264e78894cf9c8cdb8c5836e43ef92f4d968def4
+size 9308
+version https://git-lfs.github.com/spec/v1
+oid sha256:610dc6e08aba7c2720c8e4ec0578efd91cf2d88a5e638dab7811a22f0235bf2e
+size 120
+version https://git-lfs.github.com/spec/v1
+oid sha256:20706a3aec6230101364728da381726e55b5fb9a1cad893b9d526e6f63a44b10
+size 2433
+version https://git-lfs.github.com/spec/v1
+oid sha256:c4caaa275462df6e82494773bd6309756be5db834706edd529bcab4fdcb30e00
+size 2988
+version https://git-lfs.github.com/spec/v1
+oid sha256:601cd3af3728de69b45aa3a91f8a6849799479ae41eede3912ee0ac92190b2f2
+size 1790
+version https://git-lfs.github.com/spec/v1
+oid sha256:f4ac7d901d388f31c157231cd721608053ede19de60a082946ac041ed072b063
+size 156192
+# F3D Testing Data
+
+# Copyrights and Licenses
+
+- albedo.png: glTF-Sample-Models: Public Domain
+- AnimatedCube.usdz: [USD Working Group](https://github.com/usd-wg/assets): Apache 2.0
+- McUSD.usdz: [USD Working Group](https://github.com/usd-wg/assets): CC-NC-BY-SA, textures by [jasonjgardner](https://github.com/jasonjgardner)
+- Teapot.usd: [USD Working Group](https://github.com/usd-wg/assets): Public Domain - CC0
+- RiggedSimple.usdz: [USD Working Group](https://github.com/usd-wg/assets): [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- animatedWorld.fbx: VTK Data: BSD-3-Clause
+- animation_with_skeleton.fbx: assimp test models: BSD-3-Clause
+- anim_test.x: assimp test models: BSD-3-Clause
+- cube_gears.3mf: 3MF consortium samples: BSD-2-Clause
+- beach.nrrd: VTK Data: BSD-3-Clause
+- bluntfin.vts: VTK Data: BSD-3-Clause
+- bot2.wrl: VTK Data: BSD-3-Clause
+- BoxAnimated*: glTF-Sample-Models/Cesium: [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- Box_draco*: glTF-Sample-Models/Cesium: [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- Cameras.gltf: glTF-Sample-Models: Public Domain
+- cow.vtk: VTK Data: BSD-3-Clause
+- cow.vtp: VTK Data: BSD-3-Clause
+- cowlow.vtp: VTK Data: BSD-3-Clause
+- disk_out_ref.ex2: VTK Data: BSD-3-Clause
+- dragon.vtu: Stanford: Public Domain
+- duck.dae: assimp test models: BSD-3-Clause
+- duck.fbx: assimp test models: BSD-3-Clause
+- HeadMRVolume*: VTK Data: BSD-3-Clause
+- icosahedron.vdb: OpenVDB: [MPL-2.0](http://www.mozilla.org/MPL/2.0/)
+- iflamigm.3ds: VTK Data: BSD-3-Clause
+- IM-0001-1983.dcm: VTK Data: BSD-3-Clause
+- InterpolationTest.glb: glTF-Sample-Models: Public Domain
+- kloofendal_43d_clear_1k.exr: Polyhaven: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+- normal.png: glTF-Sample-Models: Public Domain
+- normalMapping.fbx: assimp test models: BSD-3-Clause; rubberduck: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+- palermo_park_1k.hdr: Polyhaven: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Part-4-Buildings-V4-one.gml: VTK Data: BSD-3-Clause
+- phong_cube.fbx: assimp test models: BSD-3-Clause
+- PinkEggFromLW.dxf: assimp test models: BSD-3-Clause
+- RectGrid2.vtr: VTK Data: BSD-3-Clause
+- red.jpg: glTF-Sample-Models: Public Domain
+- Crosterian.ttf: Denis Ignatov : [OFL (SIL Open Font License)](https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL)
+- SimpleMorph.gltf: glTF-Sample-Models: Public Domain
+- SimpleSkin.gltf: glTF-Sample-Models: Public Domain
+- samplePTS.pts: VTK Data: BSD-3-Clause
+- skin.png: Blender: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+- small.ex2: VTK Data: BSD-3-Clause
+- sphere_points.vdb: OpenVDB: [MPL-2.0](http://www.mozilla.org/MPL/2.0/)
+- teapot.off: Utah Teapot: Public Domain
+- tensors.vti: VTK Data: BSD-3-Clause
+- UnlitTest.glb: glTF-Sample-Models/Analytical Graphics, Inc.: [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- vase_4comp.vti: VTK Data: BSD-3-Clause
+- WaterBottle.glb: glTF-Sample-Models: Public Domain
+- world*: VTK Data: BSD-3-Clause
+- 16bits.*: @bisechen: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+- (ノಠ益ಠ )ノ.vtp: VTK Data: BSD-3-Clause
+
+All other datasets are licensed under the BSD-3-Clause F3D license.
+
+# VTK Data: BSD-3-Clause license
+
+```
+  Program:   Visualization Toolkit
+  Module:    Copyright.txt
+
+Copyright (c) 1993-2015 Ken Martin, Will Schroeder, Bill Lorensen
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither name of Ken Martin, Will Schroeder, or Bill Lorensen nor the names
+   of any contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+# assimp test models: BSD-3-Clause license
+
+```
+Open Asset Import Library (assimp)
+
+Copyright (c) 2006-2021, assimp team
+All rights reserved.
+
+Redistribution and use of this software in source and binary forms,
+with or without modification, are permitted provided that the
+following conditions are met:
+
+* Redistributions of source code must retain the above
+  copyright notice, this list of conditions and the
+  following disclaimer.
+
+* Redistributions in binary form must reproduce the above
+  copyright notice, this list of conditions and the
+  following disclaimer in the documentation and/or other
+  materials provided with the distribution.
+
+* Neither the name of the assimp team, nor the names of its
+  contributors may be used to endorse or promote products
+  derived from this software without specific prior
+  written permission of the assimp team.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+version https://git-lfs.github.com/spec/v1
+oid sha256:a2eecb88f8468b6091347723a54066e6635f830f80224ce904bb65170a2f39e6
+size 231
+version https://git-lfs.github.com/spec/v1
+oid sha256:714ff5b2db59d3867675d0f2419c24a71ed234985b39dc1ea83ee7d72110de4b
+size 124992
+version https://git-lfs.github.com/spec/v1
+oid sha256:aa06cd2cf3e3b86752b755aad69c103c485eae6a60f65a768c3b1d0e9cab3793
+size 9322
+version https://git-lfs.github.com/spec/v1
+oid sha256:d970d3c27ac2e2b1102fd1797a9ef9b042b02fee16f22b258d7a7d51841513fd
+size 33304
+version https://git-lfs.github.com/spec/v1
+oid sha256:0fef9dbb8733372c297902830d2edfc91634976d5310bb5980597b6dcafbe211
+size 4608991
+version https://git-lfs.github.com/spec/v1
+oid sha256:cc6c3d797b206123d02586db0a267c39429727614a6d788712d4eace7a57b163
+size 401099
+version https://git-lfs.github.com/spec/v1
+oid sha256:65734e4d5772274f1f3bf419fc1238565495ab9e7974edf801fd561c24469d39
+size 48343
+version https://git-lfs.github.com/spec/v1
+oid sha256:5cfd8cb273e3836df222341e38edc82dd26af939b749e4501366038f32c3d3c1
+size 275099
+version https://git-lfs.github.com/spec/v1
+oid sha256:9a738436c39b2503de78be3a1e6bdc0452b290b81beebdbd042d039c5983b0f7
+size 13777
+version https://git-lfs.github.com/spec/v1
+oid sha256:f0200b69c6e3a08f0a1b884415d3456672ec6e9532d498af0647b6360b8e0135
+size 3191
+version https://git-lfs.github.com/spec/v1
+oid sha256:dc9433d89da571a1e6989137f8c1fec1e121d81ebab4b4c85e2cda8bbc47f302
+size 3696
+version https://git-lfs.github.com/spec/v1
+oid sha256:94f77a2ae032c50ba8aa09e375437112c4d26c81fbfe95342ee7a2c43d9e67a8
+size 1301684
+version https://git-lfs.github.com/spec/v1
+oid sha256:e07b68c6fd9fbf73d372c610a681b89d6b013bdd1a506e46a411df82210a2481
+size 3992
+version https://git-lfs.github.com/spec/v1
+oid sha256:4dc1c91c98bdc104ad08a6d877d8421ca2689cb55ce740d77d8091b274d38705
+size 373032
+version https://git-lfs.github.com/spec/v1
+oid sha256:ec6afd7defe5f71ffed90f9f11e194b829a668ae1d65e5a5e28a978933649a3e
+size 7874
+version https://git-lfs.github.com/spec/v1
+oid sha256:92fe95feb0adf0969ba08afc0b618594d43a44fce4b8ed0b51eba18989052b76
+size 7558
+version https://git-lfs.github.com/spec/v1
+oid sha256:218380799d54eeb34f4c6ce09eb250ef5fe8ff0b561fc598ee0549b9b6249cd4
+size 816835
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d7fbf07e7888e651a70b08c4593c8706ee81f2c093ed33120db2fa748c5f0e9
+size 46476
+version https://git-lfs.github.com/spec/v1
+oid sha256:fd020fc6151e32643b5c36236f0e8d6f991a66b796834776bd06411b7e643b0b
+size 39110
+version https://git-lfs.github.com/spec/v1
+oid sha256:737d3fcfd0180c470d1c28c3be7be5ce469e10d06df9af601018e8faa7ecccf5
+size 33116
+version https://git-lfs.github.com/spec/v1
+oid sha256:bc53119a5cb8670b6835cb55c9fd191facaac7ac73fe9f1942d78044cdcb5c76
+size 46636
+version https://git-lfs.github.com/spec/v1
+oid sha256:c330f3abf7c818d50a06ca83002fcbce314e15a2dd6e9807c555741d7d8edf0e
+size 204892
+version https://git-lfs.github.com/spec/v1
+oid sha256:cbd88cff9964795ab97af018fcb9245f265a4b56f30edf003274fdc28a0c0e49
+size 30167
+version https://git-lfs.github.com/spec/v1
+oid sha256:064694feca8a8dd2c141e975711d333c5eb7636187a546cd6ac04d81771990ec
+size 918440
+version https://git-lfs.github.com/spec/v1
+oid sha256:7712faa5bf814c7a927a8dcb8d1adcdd5da1ea78d1991ae69f641b6a36612e7c
+size 234829
+version https://git-lfs.github.com/spec/v1
+oid sha256:64408cf9e3284c3ce5bd5e383a8e6610d53556568e3cc9fc6b7ea1abb888f24d
+size 51875
+version https://git-lfs.github.com/spec/v1
+oid sha256:eb2c2cce5cdf9b839a510542a802bf1f03147fc68b0dcd30777b8478a0a4ae00
+size 99
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc5af5f02dc83637026679f0a12c63b4e7d8c2a0b360004727e92afab495804c
+size 20638
+version https://git-lfs.github.com/spec/v1
+oid sha256:0402c6dc8183ec7c46d4cb71bff46451f6ab0fa4294b9725657d3a3d8638f5d1
+size 269
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce82e15cae0c525ab3ef630992e1195bf894366797b0cab81c9a54c243ba3acf
+size 97398
+version https://git-lfs.github.com/spec/v1
+oid sha256:d5aa4901d186902f90e17bf3b5917541cb6cb8cf223bfeea736631df4c047652
+size 60449
+version https://git-lfs.github.com/spec/v1
+oid sha256:1bb47dcadd1c7892fda915876788dee3ac1033ae00548cbc5aec50012da71f24
+size 28875
+version https://git-lfs.github.com/spec/v1
+oid sha256:5694dd00fec4b1ec118c33840a1984be5ca01494930fd1bdef102b9b70a2d2c2
+size 263230
+version https://git-lfs.github.com/spec/v1
+oid sha256:e6c9d99dc0ba16b6741c22efcc986d909d0a0f6febe9a4ba3b6e4553a55b1164
+size 704400
+version https://git-lfs.github.com/spec/v1
+oid sha256:34ee058246c643c1f067415c24a72e18e1284b825dabb251c2187aa57f70f8e0
+size 638957
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce80a9ced8419d0ffcba6c7a60694deb93f1a58caf26a09c3d3a25e2ee724f44
+size 126171
+version https://git-lfs.github.com/spec/v1
+oid sha256:b4af86dc6d86615d5c27d6d51280e57afa81a99dbf8c7720ff276defbff3ec9a
+size 335626
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae4921cc18bcb63875a989912b1f913fb884887fa5cddcaef9a50c6cf0def8ea
+size 173756
+version https://git-lfs.github.com/spec/v1
+oid sha256:25f5ff38a5db9465c871947c5e805d707d734bf50fb4e52793f03483afa5c22a
+size 786476
+version https://git-lfs.github.com/spec/v1
+oid sha256:6608dcfa0607a5b89d5f207afd588e09ed509821bd94ba29f4f2a705e7ec258c
+size 12808
+version https://git-lfs.github.com/spec/v1
+oid sha256:b67cdf98cc84a3e27872dfa0d1ecedfbb8abfb9c1a1a9a8f036e0f0c57539377
+size 16773
+version https://git-lfs.github.com/spec/v1
+oid sha256:0f4977983b6d9b7c16efc14768b6b0cc5e30e8abbc8b4bbb9a83baca02dd4f53
+size 63099
+version https://git-lfs.github.com/spec/v1
+oid sha256:5e3815696b5e047fd22f71bc7702e6ccf41161d6ceeb1c2b2a821624b979b2ae
+size 51761
+version https://git-lfs.github.com/spec/v1
+oid sha256:3cdb644341b524d2647245429f3c530fc0451543aae2770461b4f3bc53b0d322
+size 6577
+version https://git-lfs.github.com/spec/v1
+oid sha256:e1b7146b67e93754fcd4049a7eb88b960d890f071d70600f622b1a416c856261
+size 278553
+version https://git-lfs.github.com/spec/v1
+oid sha256:984a6eb550d205d513526c1f0c01b5b0d42f1c31ded261c97d9e1c82f371d831
+size 1018
+version https://git-lfs.github.com/spec/v1
+oid sha256:c8cb6f76930fcc37846d0ebde39cb6cab74da4b77dc5ae9bdbc4841b65ed9895
+size 363
+version https://git-lfs.github.com/spec/v1
+oid sha256:cb4293c7e144bd406d1cf4698da60677cd55cc00404700d76f226337cf084fb7
+size 1091752
+version https://git-lfs.github.com/spec/v1
+oid sha256:333c87a81a9e3a0f54df1d8118c9143445de978dc2c16e632cbefc7021d19fe5
+size 260468
+version https://git-lfs.github.com/spec/v1
+oid sha256:02c95925caae4233eb62906fbbc8186f1d26f1b7c074e0fcf04be3fabe3cf088
+size 334
+version https://git-lfs.github.com/spec/v1
+oid sha256:daa4bdc0371a99c0c7b201b170ad9336bc926e050b9ac115ffec9bdc2fdccff2
+size 29
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce65b82f6425b7091e8fc92186ebfac1aa8e6060e297ed7379f658d614130887
+size 30
+version https://git-lfs.github.com/spec/v1
+oid sha256:0e6bab3735aff08be415f586b11b4eadb06e0b8e620a58a1b4011504d60e294c
+size 29
+version https://git-lfs.github.com/spec/v1
+oid sha256:e2df53aec82f9d93ad26e57748dd2e61299bb3a1cf14f55005f180e75e960789
+size 28
+version https://git-lfs.github.com/spec/v1
+oid sha256:907b7dd9189c720c9318ded901a7adcfcee7e873e428a23aa0a7d2469c494fc4
+size 29
+version https://git-lfs.github.com/spec/v1
+oid sha256:f69d34e5917162701c2efa3660e711c562d3ac99c916f4a3d36b773fd6456219
+size 29
+version https://git-lfs.github.com/spec/v1
+oid sha256:92e22516c5532e85930c7d66d9c95da92806d0b4b80cefbdb42eda0b9d81212b
+size 407
+version https://git-lfs.github.com/spec/v1
+oid sha256:294fcdbd1414db9637a50fa09f7ef88420eff68a6439b78dff3a62bb0f7bed45
+size 6087369
+version https://git-lfs.github.com/spec/v1
+oid sha256:4a9a4ac5a8dfd17b6a1e5cf66c53584e7ef1b216e0fcb8bf573db4335ad76cc3
+size 196924
+version https://git-lfs.github.com/spec/v1
+oid sha256:494462b5e293af227a1f34f1c3706b95551ce173a242e03a82d6d35e6ef9fc13
+size 440
+version https://git-lfs.github.com/spec/v1
+oid sha256:7b4cd1dc8f61b57a4bf6da245ce5697b394c2243d2b50e6009248118c156152a
+size 2305
+version https://git-lfs.github.com/spec/v1
+oid sha256:da39f580f748e2fbd03ad270b8e3fee354f7165f3652a002610c80172616e02c
+size 7084
+version https://git-lfs.github.com/spec/v1
+oid sha256:a35af390f451b6729124015a8b79e6a56bfc1104c98bc5b8e0e01d8776f9f402
+size 6860
+version https://git-lfs.github.com/spec/v1
+oid sha256:2996577c15341df94c483caa79f5375f194584431e3041455ad65f2887f02fd1
+size 10290
+version https://git-lfs.github.com/spec/v1
+oid sha256:7b4cd1dc8f61b57a4bf6da245ce5697b394c2243d2b50e6009248118c156152a
+size 2305
+version https://git-lfs.github.com/spec/v1
+oid sha256:da39f580f748e2fbd03ad270b8e3fee354f7165f3652a002610c80172616e02c
+size 7084
+version https://git-lfs.github.com/spec/v1
+oid sha256:a35af390f451b6729124015a8b79e6a56bfc1104c98bc5b8e0e01d8776f9f402
+size 6860
+version https://git-lfs.github.com/spec/v1
+oid sha256:2996577c15341df94c483caa79f5375f194584431e3041455ad65f2887f02fd1
+size 10290
+version https://git-lfs.github.com/spec/v1
+oid sha256:934a8fb81257275f8c034feec8dca771192c40e06b67a49108ff9e3fbd260ff2
+size 6846152
+version https://git-lfs.github.com/spec/v1
+oid sha256:671f8d5f72aab23d07e966eef51108a1afaf44a422b0e6c0ea5383b4d66f4148
+size 1010664
+version https://git-lfs.github.com/spec/v1
+oid sha256:1b7b78cd8e1c980514c7e9cebaae7d90f9844014d51fb9e8f3a636ae0971d48d
+size 236442
+version https://git-lfs.github.com/spec/v1
+oid sha256:d5aa4901d186902f90e17bf3b5917541cb6cb8cf223bfeea736631df4c047652
+size 60449
+version https://git-lfs.github.com/spec/v1
+oid sha256:01fcfd22f33506876c80cf8e889569e8a1843e9330be86d21a39a19f41a01936
+size 787284
+version https://git-lfs.github.com/spec/v1
+oid sha256:5793b581b8b011f874b635da12c91387d1aed431f33f29c47909234a356fa30f
+size 564404
+version https://git-lfs.github.com/spec/v1
+oid sha256:6c4acc49408ce732b373c14b71977e5b392ae6472c545f3b3be8cbc1e3b29ff3
+size 131360
+version https://git-lfs.github.com/spec/v1
+oid sha256:2357f45c8fcea04cb2241096292a3fc939f1aad753a7bc601b8a83ca1d0464bc
+size 1266140
+version https://git-lfs.github.com/spec/v1
+oid sha256:e64e8422aeca7736df4b2df350f0591d3a641f72c0ae6dadf7e035a23acab87e
+size 964
+version https://git-lfs.github.com/spec/v1
+oid sha256:3edf53d27a70d376b79d4ad9ffb8e1dfae5675ae2d2235fee9149f5d1f345eb1
+size 1789328
+version https://git-lfs.github.com/spec/v1
+oid sha256:61152cf6369593d3cb4d7213496cd0fc0da298e37de156f93f965e8585b2e342
+size 153597
+version https://git-lfs.github.com/spec/v1
+oid sha256:49bb59603b077c726ced3c3250b8ea88caf447442ec4c371288987ab3dc4a0ca
+size 17084
+version https://git-lfs.github.com/spec/v1
+oid sha256:4a31e12eeee891f86aa7f56e25062a38473f2f9540ee6b85d9a308151cabdb81
+size 7425
+version https://git-lfs.github.com/spec/v1
+oid sha256:a634e3eba8086492f1f9d75eb1f0d3439f7fe850ad897395a0c78d80a30d702a
+size 4578
+version https://git-lfs.github.com/spec/v1
+oid sha256:ad50192d7781be7feb0a63dfbab7bea738937169cc9a9c37b228fc398acd2bc8
+size 3539
+version https://git-lfs.github.com/spec/v1
+oid sha256:f2a09db8ca5e7d9a76d18d9b060827b4a08961ae5683334d223a4faaa8232229
+size 2814
+version https://git-lfs.github.com/spec/v1
+oid sha256:53d9b53975ecb3a7ee4963d2eb785682b9747dbf02b51381edcc53eda3420869
+size 2814
+version https://git-lfs.github.com/spec/v1
+oid sha256:2c60aa3eeea0107de2e0085003fccc0272b1ec022ae3f1302c552b1599c9c072
+size 668234
+version https://git-lfs.github.com/spec/v1
+oid sha256:7ab065956f7ef819b125ed3f16a5a8561d1394c34e7f78a1873e113822b86673
+size 3135
+version https://git-lfs.github.com/spec/v1
+oid sha256:17751e26175fc6e5ca18a93bcce25c36ec17f87025f5f708d74bd4cee148eb04
+size 6441
+version https://git-lfs.github.com/spec/v1
+oid sha256:2fcaf25b1759576258bafee8765fa290e6451c95a2d5c12874ee38d2bc92e896
+size 68720
+version https://git-lfs.github.com/spec/v1
+oid sha256:2f00fbdebd0f71e08983114318866c15b167a9d0c72bf8903d5a9644ec0102f6
+size 1651
+version https://git-lfs.github.com/spec/v1
+oid sha256:6398891fe700a452bb08194471caee545fe5ade8be450332335018d6b9594db7
+size 9807
+version https://git-lfs.github.com/spec/v1
+oid sha256:77276a6b67cbf09611efc46e55871eead34e1fc6fa107db412207b91cf74697e
+size 1640377
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce15f6e3b53b165264b2237d424026452f2c7b58e56a009f910a1bfaf735edcc
+size 61352
+version https://git-lfs.github.com/spec/v1
+oid sha256:8f7eb242c063c32508a7182ae87cf3d788ed6b2cc3d56d303d0cb4ce2e989407
+size 613902
+version https://git-lfs.github.com/spec/v1
+oid sha256:9decafe68df07c2a358123a1f4634a620b62b354ac92269da08824b11a4204d4
+size 168796
+version https://git-lfs.github.com/spec/v1
+oid sha256:a5e178e7b10aa326c1574c481dbb03f34c82d755f4a5fe45812ad1263b7698fa
+size 1673376
+version https://git-lfs.github.com/spec/v1
+oid sha256:9fbe3bd6fd94bb8a3bc95b86bde22373527c0b2d8e1c0ddbd3f3b23260be9ef0
+size 141340
+version https://git-lfs.github.com/spec/v1
+oid sha256:f3a31d30356d2f346ab6a553d919dd0a92a61949375b5bbbdbdf3aaddf6045db
+size 56180
+version https://git-lfs.github.com/spec/v1
+oid sha256:5cbc0622b4b7bd2372469734fc0e2a96017f250e367c4f417634e73703e820aa
+size 16773
+version https://git-lfs.github.com/spec/v1
+oid sha256:c7561936daa41f26d1d031b6312b30ddc08484b7f6598fc7381d7563d29934f9
+size 199
+version https://git-lfs.github.com/spec/v1
+oid sha256:671f8d5f72aab23d07e966eef51108a1afaf44a422b0e6c0ea5383b4d66f4148
+size 1010664
+version https://git-lfs.github.com/spec/v1
+oid sha256:7ab8740fe980567c94174bf8c3f2ad88e3ae3df83f423466806a7dd5598fcea4
+size 878004
+version https://git-lfs.github.com/spec/v1
+oid sha256:01fcfd22f33506876c80cf8e889569e8a1843e9330be86d21a39a19f41a01936
+size 787284
+version https://git-lfs.github.com/spec/v1
+oid sha256:61e40d0f3f66a84a8e865e04164b595e95289cff93fe230a8abc4b61542c2510
+size 49571
+version https://git-lfs.github.com/spec/v1
+oid sha256:5e614ef2647a37637841b6b40d7cebedba9e6c2f9af1341d556dddb7454209eb
+size 337505
+version https://git-lfs.github.com/spec/v1
+oid sha256:01fcfd22f33506876c80cf8e889569e8a1843e9330be86d21a39a19f41a01936
+size 787284
+version https://git-lfs.github.com/spec/v1
+oid sha256:675602bc15c06ef5d12c1c268c735f1483fe80e104e1c24f36f37c614f840a8d
+size 21794
+version https://git-lfs.github.com/spec/v1
+oid sha256:26a35735f4b5e20e2553e7f210a9d6dfd51e0eafe0a9b571e66e6e06fe84cfea
+size 49043
+version https://git-lfs.github.com/spec/v1
+oid sha256:271b6fe4dd6ed3c9591e8eef62c6ac5ac65514fb7a201c32feacceafeee5c5b4
+size 284
+version https://git-lfs.github.com/spec/v1
+oid sha256:1a056e261dfdf866f9000b66fb9203411f72ce7bc7c4a7137271cb6d5719c3ff
+size 1871
+version https://git-lfs.github.com/spec/v1
+oid sha256:ad59dff224b5255b3f659554b22b7dd0a7054d497fc139aa5ada9e746ed53c04
+size 42096
+version https://git-lfs.github.com/spec/v1
+oid sha256:f74ea16141becbcea8ab9aad02dd7e077c8acab307d126ff73750cf127e62bc7
+size 1741151
+version https://git-lfs.github.com/spec/v1
+oid sha256:3ee0b64baddfe9fe19883a323629785a4914d64313a0b9eb4375058f4786fcc4
+size 1677311
+version https://git-lfs.github.com/spec/v1
+oid sha256:452d09fe8a8a3cb461a9a7fe91b21f08a432cb585d787563dc53b615eb9ed271
+size 170
+version https://git-lfs.github.com/spec/v1
+oid sha256:40dce0373646abee70a24aa803a4dc93389aefe762c4898bb44304d946fdafdb
+size 917
+version https://git-lfs.github.com/spec/v1
+oid sha256:228162f428e3af5d84d8fa55bd9d08d151a6719d8341dabd99b4bd4adc3aef4b
+size 195
+version https://git-lfs.github.com/spec/v1
+oid sha256:fff060df6def4e843ec58aeceeff265ed060ba7b6c07c4ac75908f834b10c216
+size 662
+version https://git-lfs.github.com/spec/v1
+oid sha256:e83f32920c9ab13a228d089d8af50fadeb4590745764dfbf051aaca4f98c5e2d
+size 521904
+version https://git-lfs.github.com/spec/v1
+oid sha256:9e287a850e4210a133fbba422a7a3ca062a0f323784e4aff00fadcff048eb1f8
+size 1845
+version https://git-lfs.github.com/spec/v1
+oid sha256:1b7b78cd8e1c980514c7e9cebaae7d90f9844014d51fb9e8f3a636ae0971d48d
+size 236442
+version https://git-lfs.github.com/spec/v1
+oid sha256:a417c77fbd61efec912c4e3e2dbd3c781ab8c932ef883286a3fd7b4f1780e091
+size 4404
+version https://git-lfs.github.com/spec/v1
+oid sha256:d613b9cc534e086dd3094d4d061b9132cddd5d049f98c463dd8a519dd27f694a
+size 711
+version https://git-lfs.github.com/spec/v1
+oid sha256:e9a19eb002d9c3ba13e6622bdcc6085621a6560bfec0ca54ac3e425d10cfd042
+size 236
+version https://git-lfs.github.com/spec/v1
+oid sha256:07a5db89c86733c1e97efde54d7da06380c74467a99cdbb9e6bbc1f07db5b5de
+size 213248
+version https://git-lfs.github.com/spec/v1
+oid sha256:68587a7788dc5d25063a5b4f51fdb0d274412d6746284a375603cefb7e8100cc
+size 27109
+version https://git-lfs.github.com/spec/v1
+oid sha256:296d5bb9ffaa8cc963d7542fc2fe91de6c1b9054bd87341d7cca0a975d7259cc
+size 506
+version https://git-lfs.github.com/spec/v1
+oid sha256:de3801533371e0fd25a179472bbef90cba3e1981d19b898d74c6b227ae051a0e
+size 64
+version https://git-lfs.github.com/spec/v1
+oid sha256:3c1acb5b690f1eea4c42f3da6e56e80d8b9f796a542aa48a700a9a07c7744856
+size 39043
+version https://git-lfs.github.com/spec/v1
+oid sha256:3df526970ca3a2836c9fa43b5a8545accaade3a57626b5ce476b6e0257c21944
+size 152474
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae335c39ea7dfaeb905639aa3cbaecc2f1895990d4e1a0bedd66d827c6cd2985
+size 1166830

@@ -22,7 +22,7 @@
   </div>
   <script type="text/javascript" src="f3d.js"></script>
   <script type="text/javascript">
-    var Module = {
+    let Module = {
       canvas: (() => {
         return document.getElementById("canvas");
       })(),
@@ -31,7 +31,7 @@
 
     f3d(Module).then((runtime) => {
       Module.Engine.autoloadPlugins();
-      var eng = new Module.Engine();
+      let eng = new Module.Engine();
 
       eng.getLoader().loadGeometry('/dragon.vtu');
 
@@ -39,9 +39,10 @@
       eng.getOptions().toggle('render.effect.anti-aliasing');
       eng.getOptions().toggle('render.effect.tone-mapping');
 
-      var main = document.getElementById('main');
+      let main = document.getElementById('main');
+      const scale = window.devicePixelRatio;
 
-      eng.getWindow().setSize(main.clientWidth, main.clientHeight);
+      eng.getWindow().setSize(scale * main.clientWidth, scale * main.clientHeight);
       eng.getWindow().render();
 
       eng.getInteractor().start();

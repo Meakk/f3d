@@ -39,6 +39,9 @@ VDB file formats rely on [OpenVDB](https://github.com/AcademySoftwareFoundation/
 - VDB Grid files are opened with a hard-coded 0.1 sampling rate.
 - The `vdb` plugin is not shipped in the python wheels yet.
 
+## Gaussian splatting
+Gaussian splatting (option `--point-type=gaussian`) needs depth sorting which is done internally using a compute shader. This requires support for OpenGL 4.3 which is not supported by macOS and old GPUs/drivers.
+
 # Troubleshooting
 
 ## General
@@ -126,10 +129,6 @@ Then F3D should work as expected.
 > Using the silicon binary release, I cannot find the raytracing feature or open exodus files
 
 F3D raytracing and exodus plugin are not working on macOS silicon yet, see this [issue](https://github.com/f3d-app/f3d/issues/976).
-
-> I'm unable to get coloring right with step files
-
-F3D on macOS does not support coloring on cells because of a [VTK issue](https://gitlab.kitware.com/vtk/vtk/-/issues/18969).
 
 ## Python
 
