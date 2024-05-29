@@ -1,25 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="dark">
 
 <head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
   <style>
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-    }
-
     #main {
-      min-height: 60%;
+      min-height: 70vh;
+      border: 1px solid hsl(348, 86%, 43%);
+      border-radius: 0.5rem;
+      overflow: hidden;
     }
   </style>
 </head>
 
 <body>
-  <h1>F3D Web demo</h1>
-  <div id="main">
-    <canvas id="canvas"></canvas>
-  </div>
+  <section class="section">
+    <div class="container">
+      <h1 class="title">F3D Web</h1>
+      <p class="subtitle">
+        A webassembly build demo
+      </p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container" id="main">
+      <canvas id="canvas"></canvas>
+    </div>
+  </section>
   <script type="text/javascript" src="f3d.js"></script>
   <script type="text/javascript">
     let Module = {
