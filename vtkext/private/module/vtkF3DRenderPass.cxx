@@ -25,6 +25,8 @@
 #include <vtkSSAOPass.h>
 #include <vtkSequencePass.h>
 #include <vtkShaderProgram.h>
+#include <vtkShadowMapBakerPass.h>
+#include <vtkShadowMapPass.h>
 #include <vtkSkybox.h>
 #include <vtkTextureObject.h>
 #include <vtkToneMappingPass.h>
@@ -167,12 +169,15 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 #endif
   {
     vtkNew<vtkLightsPass> lightsP;
+    vtkNew<vtkShadowMapPass> shadowsP;
     vtkNew<vtkOpaquePass> opaqueP;
     vtkNew<vtkTranslucentPass> translucentP;
     vtkNew<vtkVolumetricPass> volumeP;
 
     vtkNew<vtkRenderPassCollection> collection;
     collection->AddItem(lightsP);
+    collection->AddItem(shadowsP->GetShadowMapBakerPass());
+    collection->AddItem(shadowsP);
 
     // opaque passes
     if (this->UseSSAOPass)
