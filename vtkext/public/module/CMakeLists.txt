@@ -17,7 +17,10 @@ foreach(file IN LISTS shader_files)
 endforeach()
 
 set(classes
+  F3DUtils
   vtkF3DFaceVaryingPointDispatcher
+  vtkF3DGLTFImporter
+  vtkF3DImporter
   )
 
 # Needs https://gitlab.kitware.com/vtk/vtk/-/merge_requests/10675

@@ -28,7 +28,6 @@ void vtkF3DOpenGLGridMapper::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "FadeDistance: " << this->FadeDistance << "\n";
   os << indent << "UnitSquare: " << this->UnitSquare << "\n";
   os << indent << "Subdivisions: " << this->Subdivisions << "\n";
-  os << indent << "UpIndex: " << this->UpIndex << "\n";
 }
 
 //----------------------------------------------------------------------------
@@ -40,20 +39,14 @@ void vtkF3DOpenGLGridMapper::ReplaceShaderValues(
   std::string VSSource = shaders[vtkShader::Vertex]->GetSource();
   std::string FSSource = shaders[vtkShader::Fragment]->GetSource();
 
-  const std::string axes3d = this->UpIndex == 0 ? "zyx" : this->UpIndex == 1 ? "xzy" : "xyz";
-  const std::string axes2d = this->UpIndex == 0 ? "zy" : this->UpIndex == 1 ? "xz" : "xy";
-
   // clang-format off
   vtkShaderProgram::Substitute(VSSource, "//VTK::PositionVC::Dec",
-    "uniform vec3 originOffset;\n"
     "uniform float fadeDist;\n"
     "out vec2 gridCoord;\n"
-    "out vec2 gridOffset;\n"
   );
   vtkShaderProgram::Substitute(VSSource, "//VTK::PositionVC::Impl",
     "gridCoord = vertexMC.xy * fadeDist;\n"
-    "gridOffset = originOffset." + axes2d + ";\n"
-    "gl_Position = MCDCMatrix * vec4(vertexMC." + axes3d + " * fadeDist, 1.0);\n"
+    "gl_Position = MCDCMatrix * vec4(vertexMC.xzy * fadeDist, 1.0);\n"
   );
   
   vtkShaderProgram::Substitute(FSSource, "//VTK::CustomUniforms::Dec",
@@ -67,7 +60,7 @@ void vtkF3DOpenGLGridMapper::ReplaceShaderValues(
     "uniform vec4 axis1Color;\n"
     "uniform vec4 axis2Color;\n"
     "in vec2 gridCoord;\n"
-    "in vec2 gridOffset;\n"
+    "uniform vec2 gridOffset;\n"
 
     "float antialias(float dist, float linewidth){\n"
     "  float aa = lineAntialias;\n"
@@ -75,7 +68,7 @@ void vtkF3DOpenGLGridMapper::ReplaceShaderValues(
     "  float alpha = min(linewidth, 1.0);\n"
     "  float d = dist - lw;\n"
     "  return d < .0 ? alpha\n"
-    "       : d < aa ? (1.0 - d / aa) * alpha\n"
+    "       : d < aa ? pow((1.0 - d / aa) * alpha, 3.0)\n"
     "       : 0.0;\n"
     "}\n"
   );
@@ -91,13 +84,13 @@ void vtkF3DOpenGLGridMapper::ReplaceShaderValues(
     "  float minorAlpha = antialias(min(minorGrid.x, minorGrid.y), gridLineWidth);\n"
     "  float zoomFadeFactor = 1.0 - clamp(fwidth(majorCoord.x / unitSquare * fadeDist), 0.0, 1.0);"
     "  float alpha = max(majorAlpha, minorAlpha * minorOpacity * zoomFadeFactor);\n"
+
     "  vec4 color = vec4(diffuseColorUniform, alpha);\n"
 
     "  float axis1Weight = abs(majorCoord.y) < 0.5 ? antialias(majorGrid.y, axesLineWidth) : 0.0;\n"
     "  float axis2Weight = abs(majorCoord.x) < 0.5 ? antialias(majorGrid.x, axesLineWidth) : 0.0;\n"
     "  color = mix(color, axis2Color, axis2Weight);\n"
     "  color = mix(color, axis1Color, axis1Weight);\n"
-
     "  float sqDist = unitSquare * unitSquare * dot(fromCenter, fromCenter);\n"
     "  float radialFadeFactor = 1.0 - sqDist / (fadeDist * fadeDist);\n"
     "  color.w *= radialFadeFactor;\n"
@@ -149,7 +142,11 @@ void vtkF3DOpenGLGridMapper::SetMapperShaderParameters(
     }
   }
 
-  cellBO.Program->SetUniform3f("originOffset", this->OriginOffset);
+  const float offset2d[2] = {
+    static_cast<float>(this->OriginOffset[0]), //
+    static_cast<float>(this->OriginOffset[2])  //
+  };
+  cellBO.Program->SetUniform2f("gridOffset", offset2d);
   cellBO.Program->SetUniformf("fadeDist", this->FadeDistance);
   cellBO.Program->SetUniformf("unitSquare", this->UnitSquare);
   cellBO.Program->SetUniformi("subdivisions", this->Subdivisions);
@@ -157,26 +154,8 @@ void vtkF3DOpenGLGridMapper::SetMapperShaderParameters(
   cellBO.Program->SetUniformf("gridLineWidth", 0.6);
   cellBO.Program->SetUniformf("minorOpacity", 0.5);
   cellBO.Program->SetUniformf("lineAntialias", 1);
-
-  const float xColor[4] = { 1, 0, 0, 1 };
-  const float yColor[4] = { 0, 1, 0, 1 };
-  const float zColor[4] = { 0, 0, 1, 1 };
-  switch (this->UpIndex)
-  {
-    case 0:
-      cellBO.Program->SetUniform4f("axis1Color", zColor);
-      cellBO.Program->SetUniform4f("axis2Color", yColor);
-      break;
-    case 1:
-      cellBO.Program->SetUniform4f("axis1Color", xColor);
-      cellBO.Program->SetUniform4f("axis2Color", zColor);
-      break;
-    case 2:
-    default:
-      cellBO.Program->SetUniform4f("axis1Color", xColor);
-      cellBO.Program->SetUniform4f("axis2Color", yColor);
-      break;
-  }
+  cellBO.Program->SetUniform4f("axis1Color", this->Axis1Color);
+  cellBO.Program->SetUniform4f("axis2Color", this->Axis2Color);
 }
 
 //----------------------------------------------------------------------------
@@ -210,14 +189,12 @@ void vtkF3DOpenGLGridMapper::BuildBufferObjects(vtkRenderer* ren, vtkActor* vtkN
 //-----------------------------------------------------------------------------
 double* vtkF3DOpenGLGridMapper::GetBounds()
 {
-  double r[3] = { this->FadeDistance, this->FadeDistance, this->FadeDistance };
-  r[this->UpIndex] = 1e-4;
-  this->Bounds[0] = -r[0];
-  this->Bounds[1] = +r[0];
-  this->Bounds[2] = -r[1];
-  this->Bounds[3] = +r[1];
-  this->Bounds[4] = -r[2];
-  this->Bounds[5] = +r[2];
+  this->Bounds[0] = -this->FadeDistance;
+  this->Bounds[1] = +this->FadeDistance;
+  this->Bounds[2] = -1e-4;
+  this->Bounds[3] = +1e-4;
+  this->Bounds[4] = -this->FadeDistance;
+  this->Bounds[5] = +this->FadeDistance;
   return this->Bounds;
 }
 
@@ -235,12 +212,6 @@ void vtkF3DOpenGLGridMapper::RenderPiece(vtkRenderer* ren, vtkActor* actor)
 bool vtkF3DOpenGLGridMapper::GetNeedToRebuildShaders(
   vtkOpenGLHelper& cellBO, vtkRenderer* vtkNotUsed(ren), vtkActor* act)
 {
-// Complete GetRenderPassStageMTime needs in
-// https://gitlab.kitware.com/vtk/vtk/-/merge_requests/7933
-#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 0, 20210506)
   vtkMTimeType renderPassMTime = this->GetRenderPassStageMTime(act, &cellBO);
-#else
-  vtkMTimeType renderPassMTime = this->GetRenderPassStageMTime(act);
-#endif
   return cellBO.Program == nullptr || cellBO.ShaderSourceTime < renderPassMTime;
 }

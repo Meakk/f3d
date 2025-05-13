@@ -26,6 +26,7 @@ target_link_options(f3djs PRIVATE
   "SHELL:-sEMULATE_FUNCTION_POINTER_CASTS=0"
   "SHELL:-sMODULARIZE=1"
   "SHELL:-sUSE_PTHREADS=0"
+  "SHELL:-sSTACK_SIZE=1048576"
   "SHELL:-sWASM=1"
   "SHELL:-sFORCE_FILESYSTEM"
   "SHELL:-sEXPORTED_RUNTIME_METHODS=FS"
@@ -48,5 +49,13 @@ if(F3D_WASM_COPY_APP)
   configure_file(
     "${F3D_SOURCE_DIR}/resources/logo.ico"
     "${CMAKE_BINARY_DIR}/bin/favicon.ico"
+    COPYONLY)
+  configure_file(
+    "${F3D_SOURCE_DIR}/resources/logo256.png"
+    "${CMAKE_BINARY_DIR}/bin/icon256.png"
+    COPYONLY)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/manifest.json"
+    "${CMAKE_BINARY_DIR}/bin/manifest.json"
     COPYONLY)
 endif()

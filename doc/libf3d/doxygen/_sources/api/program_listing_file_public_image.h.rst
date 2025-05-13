@@ -16,6 +16,7 @@ Program Listing for File image.h
    #include "exception.h"
    #include "export.h"
    
+   #include <filesystem>
    #include <string>
    #include <vector>
    
@@ -39,7 +40,7 @@ Program Listing for File image.h
        FLOAT
      };
    
-     explicit image(const std::string& path);
+     explicit image(const std::filesystem::path& filePath);
    
      image(unsigned int width, unsigned int height, unsigned int channelCount,
        ChannelType type = ChannelType::BYTE);
@@ -53,53 +54,44 @@ Program Listing for File image.h
      image& operator=(image&& img) noexcept;
    
    
-     bool operator==(const image& reference) const;
-     bool operator!=(const image& reference) const;
+     [[nodiscard]] bool operator==(const image& reference) const;
+     [[nodiscard]] bool operator!=(const image& reference) const;
    
-     std::vector<double> getNormalizedPixel(const std::pair<int, int>& xy) const;
+     [[nodiscard]] std::vector<double> getNormalizedPixel(const std::pair<int, int>& xy) const;
    
-     static std::vector<std::string> getSupportedFormats();
-   
-   
-     unsigned int getWidth() const;
-     unsigned int getHeight() const;
-   #ifndef F3D_NO_DEPRECATED
-     F3D_DEPRECATED image& setResolution(unsigned int width, unsigned int height);
-   #endif
+     [[nodiscard]] static std::vector<std::string> getSupportedFormats();
    
    
-     unsigned int getChannelCount() const;
-   #ifndef F3D_NO_DEPRECATED
-     F3D_DEPRECATED image& setChannelCount(unsigned int dim);
-   #endif
+     [[nodiscard]] unsigned int getWidth() const;
+     [[nodiscard]] unsigned int getHeight() const;
    
-     ChannelType getChannelType() const;
    
-     unsigned int getChannelTypeSize() const;
+     [[nodiscard]] unsigned int getChannelCount() const;
+   
+     [[nodiscard]] ChannelType getChannelType() const;
+   
+     [[nodiscard]] unsigned int getChannelTypeSize() const;
    
    
      image& setContent(void* buffer);
-     void* getContent() const;
-   #ifndef F3D_NO_DEPRECATED
-     F3D_DEPRECATED image& setData(unsigned char* buffer);
-     F3D_DEPRECATED unsigned char* getData() const;
-   #endif
+     [[nodiscard]] void* getContent() const;
    
-     bool compare(const image& reference, double threshold, image& diff, double& error) const;
+     double compare(const image& reference) const;
    
-     void save(const std::string& path, SaveFormat format = SaveFormat::PNG) const;
+     const image& save(
+       const std::filesystem::path& filePath, SaveFormat format = SaveFormat::PNG) const;
    
-     std::vector<unsigned char> saveBuffer(SaveFormat format = SaveFormat::PNG) const;
+     [[nodiscard]] std::vector<unsigned char> saveBuffer(SaveFormat format = SaveFormat::PNG) const;
    
-     const f3d::image& toTerminalText(std::ostream& stream) const;
+     const image& toTerminalText(std::ostream& stream) const;
    
-     std::string toTerminalText() const;
+     [[nodiscard]] std::string toTerminalText() const;
    
-     f3d::image& setMetadata(const std::string& key, const std::string& value);
+     f3d::image& setMetadata(std::string key, std::string value);
    
-     std::string getMetadata(const std::string& key) const;
+     [[nodiscard]] std::string getMetadata(const std::string& key) const;
    
-     std::vector<std::string> allMetadata() const;
+     [[nodiscard]] std::vector<std::string> allMetadata() const;
    
      struct write_exception : public exception
      {
@@ -109,6 +101,11 @@ Program Listing for File image.h
      struct read_exception : public exception
      {
        explicit read_exception(const std::string& what = "");
+     };
+   
+     struct metadata_exception : public exception
+     {
+       explicit metadata_exception(const std::string& what = "");
      };
    
    private:

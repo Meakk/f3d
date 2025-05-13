@@ -30,9 +30,15 @@ Includes
 --------
 
 
+- ``algorithm``
+
 - ``array``
 
+- ``exception.h`` (:ref:`file_public_exception.h`)
+
 - ``export.h``
+
+- ``iostream``
 
 - ``string``
 
@@ -46,7 +52,7 @@ Included By
 
 - :ref:`file_public_camera.h`
 
-- :ref:`file_public_loader.h`
+- :ref:`file_public_scene.h`
 
 
 
@@ -66,7 +72,21 @@ Classes
 
 - :ref:`exhale_struct_structf3d_1_1point3__t`
 
+- :ref:`exhale_struct_structf3d_1_1type__access__exception`
+
+- :ref:`exhale_struct_structf3d_1_1type__construction__exception`
+
 - :ref:`exhale_struct_structf3d_1_1vector3__t`
+
+- :ref:`exhale_class_classf3d_1_1color__t`
+
+- :ref:`exhale_class_classf3d_1_1colormap__t`
+
+- :ref:`exhale_class_classf3d_1_1direction__t`
+
+- :ref:`exhale_class_classf3d_1_1double__array__t`
+
+- :ref:`exhale_class_classf3d_1_1ratio__t`
 
 
 Typedefs
