@@ -348,11 +348,11 @@ jobs:
           lfs_sha: ${{ needs.cache_lfs.outputs.lfs_sha}}
 
   #----------------------------------------------------------------------------
-  # Windows VCPKG CI: Test build with VCPKG
+  # VCPKG CI: Build with VCPKG
   #----------------------------------------------------------------------------
   vcpkg_preset:
     needs: [detect_checkboxes]
-    if: ${{ (contains(needs.detect_checkboxes.outputs.checked, 'VCPKG CI')) || (github.ref == 'refs/heads/master') }}
+    if: ${{ (contains(needs.detect_checkboxes.outputs.checked, 'vcpkg CI')) || (github.ref == 'refs/heads/master') }}
 
     strategy:
       fail-fast: false
