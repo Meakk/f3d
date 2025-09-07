@@ -88,14 +88,14 @@ F3D can play [animations](ANIMATIONS.md) for any [supported files](SUPPORTED_FOR
 
 With your file loaded into F3D, press the <kbd>W</kbd> hotkey to cycle through available animations. Then, press <kbd>Space</kbd> to play your selected animation.
 
-Alternatively, you can use the command line to play animations. Use the `--animation-index` [option](OPTIONS.md) to specify which animation you want to play. To play all animations at once, use `--animation-index=-1` (`.gltf`/`.glb` only).
+Alternatively, you can use the command line to play animations. Use the `--animation-indices` [option](OPTIONS.md) to specify which animation you want to play. To play all animations at once, use `--animation-indices=-1`.
 
 For more information, see the [Animations](ANIMATIONS.md) page.
 
 ## Further Reading
 
 - [A list of all F3D command-line options.](OPTIONS.md)
-- [How to interact with scenes in F3D.](INTERACTIONS.MD)
+- [How to interact with scenes in F3D.](INTERACTIONS.md)
 - [How to play animations in F3D.](ANIMATIONS.md)
 - [How to specify colormaps in F3D.](COLOR_MAPS.md)
 - [How to configure plugins in F3D.](PLUGINS.md)
