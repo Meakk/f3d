@@ -382,7 +382,9 @@ PYBIND11_MODULE(pyf3d, module)
     .def_readwrite("normals", &f3d::mesh_t::normals)
     .def_readwrite("texture_coordinates", &f3d::mesh_t::texture_coordinates)
     .def_readwrite("face_sides", &f3d::mesh_t::face_sides)
-    .def_readwrite("face_indices", &f3d::mesh_t::face_indices);
+    .def_readwrite("face_indices", &f3d::mesh_t::face_indices)
+    .def_readwrite("point_scalars", &f3d::mesh_t::point_scalars)
+    .def_readwrite("face_scalars", &f3d::mesh_t::face_scalars);
 
   // f3d::color_t
   py::class_<f3d::color_t>(module, "Color")

@@ -21,7 +21,11 @@
 #include <vtkProgressBarRepresentation.h>
 #include <vtkProgressBarWidget.h>
 #include <vtkTimerLog.h>
+#include <vtkFloatArray.h>
+#include <vtkStridedTypeFloat32Array.h>
+#include <vtkSMPTools.h>
 #include <vtkVersion.h>
+#include <vtkUnsignedIntArray.h>
 #include <vtksys/SystemTools.hxx>
 
 #include <vector>
@@ -30,6 +34,27 @@ namespace fs = std::filesystem;
 
 namespace f3d::detail
 {
+template<vtkIdType NbComponents>
+vtkSmartPointer<vtkDataArray> ConvertToFloatArray(const std::vector<float>& positions)
+{
+  vtkIdType nbVertices = static_cast<vtkIdType>(positions.size() / NbComponents);
+
+  vtkNew<vtkFloatArray> arr;
+  arr->SetNumberOfComponents(NbComponents);
+  arr->SetNumberOfTuples(nbVertices);
+
+  vtkSMPTools::For(0, nbVertices,
+    [&](vtkIdType begin, vtkIdType end)
+    {
+      for (vtkIdType i = begin; i < end; i++)
+      {
+        arr->SetTypedTuple(i, positions.data() + NbComponents * i);
+      }
+    });
+
+  return arr;
+}
+
 class scene_impl::internals
 {
 public:
@@ -385,12 +410,80 @@ scene& scene_impl::add(const mesh_t& mesh)
   }
 
   vtkNew<vtkF3DMemoryMesh> vtkSource;
-  vtkSource->SetPoints(mesh.points);
-  vtkSource->SetNormals(mesh.normals);
-  vtkSource->SetTCoords(mesh.texture_coordinates);
-  vtkSource->SetFaces(mesh.face_sides, mesh.face_indices);
+  vtkSource->SetPoints(ConvertToFloatArray<3>(mesh.points));
+  vtkSource->SetNormals(ConvertToFloatArray<3>(mesh.normals));
+  vtkSource->SetTCoords(ConvertToFloatArray<2>(mesh.texture_coordinates));
 
-  vtkSmartPointer<vtkF3DGenericImporter> importer = vtkSmartPointer<vtkF3DGenericImporter>::New();
+
+  vtkNew<vtkIdTypeArray> offsets;
+  vtkNew<vtkIdTypeArray> connectivity;
+
+  offsets->SetNumberOfTuples(mesh.face_sides.size() + 1);
+  connectivity->SetNumberOfTuples(mesh.face_indices.size());
+
+  // fill offsets
+  offsets->SetTypedComponent(0, 0, 0);
+  for (vtkIdType i = 0; i < mesh.face_sides.size(); i++)
+  {
+    offsets->SetTypedComponent(
+      i + 1, 0, offsets->GetTypedComponent(i, 0) + static_cast<vtkIdType>(mesh.face_sides[i]));
+  }
+
+  // fill connectivity
+  vtkSMPTools::For(0, mesh.face_indices.size(),
+    [&](vtkIdType begin, vtkIdType end)
+    {
+      for (vtkIdType i = begin; i < end; i++)
+      {
+        connectivity->SetTypedComponent(i, 0, static_cast<vtkIdType>(mesh.face_indices[i]));
+      }
+    });
+
+  vtkSource->SetFaces(offsets, connectivity);
+
+  vtkNew<vtkF3DGenericImporter> importer;
+  importer->SetInternalReader(vtkSource);
+
+  log::debug("Loading 3D scene from memory");
+  this->Internals->Load({ { "<mesh>", importer } });
+  return *this;
+}
+
+//----------------------------------------------------------------------------
+scene& scene_impl::add(const mesh& mesh)
+{
+  vtkNew<vtkStridedTypeFloat32Array> positions;
+  positions->SetName("Positions");
+  positions->SetNumberOfComponents(3);
+  positions->SetNumberOfTuples(mesh.getPointCount(0.0));
+  positions->ConstructBackend(mesh.getPoints(0.0), mesh.getPointsStride(), 3);
+
+  vtkNew<vtkStridedTypeFloat32Array> normals;
+  normals->SetName("Normals");
+  normals->SetNumberOfComponents(3);
+  normals->SetNumberOfTuples(mesh.getPointCount(0.0));
+  normals->ConstructBackend(mesh.getNormals(0.0), mesh.getNormalsStride(), 3);
+
+  vtkNew<vtkStridedTypeFloat32Array> tcoords;
+  tcoords->SetName("TCoords");
+  tcoords->SetNumberOfComponents(2);
+  tcoords->SetNumberOfTuples(mesh.getPointCount(0.0));
+  tcoords->ConstructBackend(mesh.getTextureCoordinates(0.0), mesh.getTextureCoordinatesStride(), 2);
+
+  vtkNew<vtkF3DMemoryMesh> vtkSource;
+  vtkSource->SetPoints(positions);
+  vtkSource->SetNormals(normals);
+  vtkSource->SetTCoords(tcoords);
+
+  vtkNew<vtkUnsignedIntArray> offsets;
+  vtkNew<vtkUnsignedIntArray> connectivity;
+
+  offsets->SetArray(const_cast<unsigned int*>(mesh.getFaceOffsets(0.0)), mesh.getFaceOffsetCount(0.0), 0);
+  connectivity->SetArray(const_cast<unsigned int*>(mesh.getFaceIndices(0.0)), mesh.getFaceIndexCount(0.0), 0);
+
+  vtkSource->SetFaces(offsets, connectivity);
+
+  vtkNew<vtkF3DGenericImporter> importer;
   importer->SetInternalReader(vtkSource);
 
   log::debug("Loading 3D scene from memory");

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 /// @endcond
@@ -327,6 +328,8 @@ struct mesh_t
   std::vector<float> texture_coordinates;
   std::vector<unsigned int> face_sides;
   std::vector<unsigned int> face_indices;
+  std::map<std::string, std::vector<float>> point_scalars;
+  std::map<std::string, std::vector<float>> face_scalars;
 
   /**
    * Check validity of the mesh.

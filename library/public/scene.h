@@ -3,6 +3,7 @@
 
 #include "exception.h"
 #include "export.h"
+#include "mesh.h"
 #include "types.h"
 
 /// @cond
@@ -66,6 +67,11 @@ public:
    * On other failure, throw a load_failure_exception.
    */
   virtual scene& add(const mesh_t& mesh) = 0;
+
+  /**
+   * TODO
+   */
+  virtual scene& add(const mesh& mesh) = 0;
 
   /**
    * Add and load provided buffer into the scene as it was file.

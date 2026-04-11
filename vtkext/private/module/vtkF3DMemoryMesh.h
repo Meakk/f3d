@@ -22,7 +22,7 @@ public:
    * Length of the list must be a multiple of 3.
    * The list is copied internally.
    */
-  void SetPoints(const std::vector<float>& positions);
+  void SetPoints(vtkDataArray* positions);
 
   /**
    * Set contiguous list of normals.
@@ -31,7 +31,7 @@ public:
    * The list is copied internally.
    * The list can be empty.
    */
-  void SetNormals(const std::vector<float>& normals);
+  void SetNormals(vtkDataArray* normals);
 
   /**
    * Set contiguous list of texture coordinates.
@@ -40,7 +40,7 @@ public:
    * The list is copied internally.
    * The list can be empty.
    */
-  void SetTCoords(const std::vector<float>& tcoords);
+  void SetTCoords(vtkDataArray* tcoords);
 
   /**
    * Set faces by vertex indices.
@@ -50,8 +50,7 @@ public:
    * The lists are copied internally.
    * The lists can be empty, resulting in a point cloud.
    */
-  void SetFaces(
-    const std::vector<unsigned int>& faceSizes, const std::vector<unsigned int>& faceIndices);
+  void SetFaces(vtkDataArray* offsets, vtkDataArray* connectivity);
 
 protected:
   vtkF3DMemoryMesh();
