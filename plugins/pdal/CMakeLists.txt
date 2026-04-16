@@ -94,3 +94,15 @@ f3d_plugin_build(
   CONFIGURATION_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/configs/config.d" "${CMAKE_CURRENT_SOURCE_DIR}/configs/thumbnail.d"
   FREEDESKTOP
 )
+
+target_link_options(pdalcpp INTERFACE
+    "-Wl,-u,__ZN4pdal10QfitReaderC1Ev"
+    "-Wl,-u,__ZN4pdal10SbetReaderC1Ev"
+    "-Wl,-u,__ZN4pdal10SlpkReaderC1Ev"
+    "-Wl,-u,__ZN4pdal12OptechReaderC1Ev"
+    "-Wl,-u,__ZN4pdal16TerrasolidReaderD0Ev"
+    "-Wl,-u,__ZN4pdal9BpfReaderC1Ev"
+    "-Wl,-u,__ZN4pdal9LasReaderC1Ev"
+    "-Wl,-u,__ZN4pdal9PcdReaderC1Ev"
+    "-Wl,-u,__ZN4pdal9PtxReaderD0Ev"
+)
