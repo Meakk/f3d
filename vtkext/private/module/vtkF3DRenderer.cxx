@@ -342,7 +342,8 @@ void vtkF3DRenderer::Initialize()
 #if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 5, 20251001)
   // create a window resize callback for axis
   this->ModernAxisWidgetResizeCallback = vtkSmartPointer<vtkCallbackCommand>::New();
-  this->ModernAxisWidgetResizeCallback->SetClientData(this);
+  this->ModernAxisWidgetResizeCallback->
+  SetClientData(this);
   this->ModernAxisWidgetResizeCallback->SetCallback(
     [](vtkObject* const, unsigned long, void* clientData, void*)
     {
