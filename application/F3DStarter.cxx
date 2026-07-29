@@ -347,12 +347,13 @@ public:
       return F3DInternals::ParseStatefileContent(
         stream, {}, outOptions, outFiles, outFileGroups, outWindowSize, outWindowPosition);
     }
+    // LCOV_EXCL_START
     catch (const f3d::engine::statefile_exception& ex)
     {
-      // Unreachable in testing
       f3d::log::error(ex.what());
       return false;
     }
+    // LCOV_EXCL_STOP
   }
 
   /* Add the app-specific `file_groups` entry (all file groups, including the ones not currently
@@ -2417,7 +2418,7 @@ void F3DStarter::SaveStatefile(const std::string& filenameTemplate)
     std::optional<std::string> file = f3d::utils::getEnv("CTEST_SAVE_STATEFILE_DIALOG_FILE");
     if (!file.has_value())
     {
-      // Unreachable in testing
+      // LCOV_EXCL_START
       const char* pattern = "*.json";
       char* ptr =
         tinyfd_saveFileDialog("Save Statefile", "f3d_state.json", 1, &pattern, "Statefiles");
@@ -2425,6 +2426,7 @@ void F3DStarter::SaveStatefile(const std::string& filenameTemplate)
       {
         file = ptr;
       }
+      // LCOV_EXCL_STOP
     }
     if (file.has_value() && !file.value().empty())
     {
@@ -2497,11 +2499,12 @@ void F3DStarter::SaveStatefileToClipboard()
     state.toClipboard();
     f3d::log::info("Statefile copied to the clipboard");
   }
+  // LCOV_EXCL_START
   catch (const f3d::engine::statefile_exception& ex)
   {
-    // Unreachable in testing
     f3d::log::error(ex.what());
   }
+  // LCOV_EXCL_STOP
 }
 
 //----------------------------------------------------------------------------
@@ -2514,7 +2517,7 @@ void F3DStarter::LoadStatefile(const std::string& source)
     std::optional<std::string> file = f3d::utils::getEnv("CTEST_LOAD_STATEFILE_DIALOG_FILE");
     if (!file.has_value())
     {
-      // Unreachable in testing
+      // LCOV_EXCL_START
       const char* pattern = "*.json";
       char* ptr =
         tinyfd_openFileDialog("Load Statefile", nullptr, 1, &pattern, "Statefiles", false);
@@ -2522,6 +2525,7 @@ void F3DStarter::LoadStatefile(const std::string& source)
       {
         file = ptr;
       }
+      // LCOV_EXCL_STOP
     }
     if (file.has_value() && !file.value().empty())
     {
