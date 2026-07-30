@@ -1361,6 +1361,7 @@ interactor& interactor_impl::initCommands()
         f3d::engine::state::fromString(content).toClipboard();
         log::info("Statefile copied to the clipboard");
       }
+      // Cannot test clipboard failure in the CI
       // LCOV_EXCL_START
       catch (const f3d::engine::statefile_exception& ex)
       {
@@ -1383,6 +1384,7 @@ interactor& interactor_impl::initCommands()
           this->Internals->Scene, this->Internals->Window, this->Internals->Options, st.toString());
         log::info("Statefile loaded from the clipboard");
       }
+      // Cannot test clipboard failure in the CI
       // LCOV_EXCL_START
       catch (const f3d::engine::statefile_exception& ex)
       {

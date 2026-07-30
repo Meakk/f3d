@@ -396,11 +396,13 @@ engine::state engine::state::fromClipboard()
   {
     if (!clip::get_text(content))
     {
+      // Cannot test clipboard failure in the CI
       // LCOV_EXCL_START
       throw engine::statefile_exception("Could not read a state from the clipboard");
       // LCOV_EXCL_STOP
     }
   }
+  // Cannot test clipboard failure in the CI
   // LCOV_EXCL_START
   catch (const clip::clip_exception& ex)
   {
@@ -450,6 +452,7 @@ void engine::state::toClipboard() const
   {
     if (!clip::set_text(this->Content))
     {
+      // Cannot test clipboard failure in the CI
       // LCOV_EXCL_START
       throw engine::statefile_exception("Could not copy the state to the clipboard");
       // LCOV_EXCL_STOP
@@ -457,6 +460,7 @@ void engine::state::toClipboard() const
   }
   catch (const clip::clip_exception& ex)
   {
+    // Cannot test clipboard failure in the CI
     // LCOV_EXCL_START
     throw engine::statefile_exception(std::string("Could not use clip: ") + ex.what());
     // LCOV_EXCL_STOP
