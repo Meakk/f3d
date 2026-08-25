@@ -11,6 +11,7 @@
 #include <vtkDataAssembly.h>
 #include <vtkDoubleArray.h>
 #include <vtkFloatArray.h>
+#include <vtkGlyph3DMapper.h>
 #include <vtkIdTypeArray.h>
 #include <vtkImageAppendComponents.h>
 #include <vtkImageData.h>
@@ -65,6 +66,8 @@
 #pragma warning(push, 0)
 #endif
 #include <pxr/base/arch/symbols.h>
+#include <pxr/base/gf/quatf.h>
+#include <pxr/base/gf/quath.h>
 #include <pxr/base/plug/registry.h>
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/resolver.h>
@@ -423,538 +426,174 @@ public:
       }
       else if (prim.IsA<pxr::UsdGeomPointInstancer>())
       {
-        pxr::UsdGeomPointInstancer glyphs = pxr::UsdGeomPointInstancer(prim);
+        pxr::UsdGeomPointInstancer instancer(prim);
 
-        // TODO: Ideally, we should use the 3D glyph mapper, but it's left for future work
-        // See https://github.com/f3d-app/f3d/issues/1075
-        pxr::VtMatrix4dArray xforms;
+        pxr::SdfPathVector protoPaths;
+        instancer.GetPrototypesRel().GetTargets(&protoPaths);
 
-        if (glyphs.ComputeInstanceTransformsAtTime(&xforms, timeCode, timeCode))
+        // build one polydata per prototype, used as glyph sources
+        std::vector<vtkSmartPointer<vtkPolyData>> prototypePolyData;
+        prototypePolyData.reserve(protoPaths.size());
+
+        for (const pxr::SdfPath& protoPath : protoPaths)
         {
-          int i = 0;
-          for (const pxr::GfMatrix4d& currInstMatrix : xforms)
+          pxr::UsdPrim protoPrim = this->Stage->GetPrimAtPath(protoPath);
+          vtkSmartPointer<vtkPolyData> protoPolyData;
+
+          // the prototype root is not necessarily a Gprim itself (e.g. an Xform wrapping a mesh)
+          for (const pxr::UsdPrim& descendant : pxr::UsdPrimRange(protoPrim))
           {
-            auto mat = this->ConvertMatrix(currInstMatrix);
-            vtkMatrix4x4::Multiply4x4(currentMatrix, mat, mat);
+            if (descendant.IsA<pxr::UsdGeomGprim>())
+            {
+              bool unusedDirectScalars = false;
+              protoPolyData =
+                this->ConvertGprimToPolyData(descendant, timeCode, unusedDirectScalars);
 
-            pxr::TfToken tok(std::string("instance_") + std::to_string(i++));
+              if (descendant != protoPrim)
+              {
+                // bake the descendant's transform, relative to the prototype root, into the points
+                vtkNew<vtkTransform> relativeTransform;
+                relativeTransform->SetMatrix(
+                  this->GetLocalTransform(pxr::UsdGeomGprim(descendant), timeCode));
 
-            this->ImportNode(renderer, hierarchy, actorCollection, prim,
-              path.AppendChild(prim.GetName()).AppendChild(tok), mat);
+                vtkNew<vtkTransformFilter> transformFilter;
+                transformFilter->SetTransform(relativeTransform);
+                transformFilter->SetInputData(protoPolyData);
+                transformFilter->Update();
+
+                protoPolyData = vtkPolyData::SafeDownCast(transformFilter->GetOutput());
+              }
+
+              break;
+            }
+          }
+
+          prototypePolyData.push_back(
+            protoPolyData ? protoPolyData : vtkSmartPointer<vtkPolyData>::New());
+        }
+
+        pxr::VtArray<int> protoIndices;
+        instancer.GetProtoIndicesAttr().Get(&protoIndices, timeCode);
+
+        pxr::VtArray<pxr::GfVec3f> positions;
+        instancer.GetPositionsAttr().Get(&positions, timeCode);
+
+        pxr::VtArray<pxr::GfVec3f> scales;
+        instancer.GetScalesAttr().Get(&scales, timeCode);
+
+        // orientationsf (quatf, full precision) takes precedence over orientations (quath)
+        pxr::VtArray<pxr::GfQuatf> orientationsf;
+        bool useOrientationsf = instancer.GetOrientationsfAttr() &&
+          instancer.GetOrientationsfAttr().Get(&orientationsf, timeCode) &&
+          orientationsf.size() > 0;
+
+        pxr::VtArray<pxr::GfQuath> orientationsh;
+        if (!useOrientationsf)
+        {
+          instancer.GetOrientationsAttr().Get(&orientationsh, timeCode);
+        }
+
+        vtkIdType numInstances = static_cast<vtkIdType>(positions.size());
+
+        vtkNew<vtkPoints> instancePoints;
+        instancePoints->SetNumberOfPoints(numInstances);
+
+        vtkNew<vtkIdTypeArray> protoIndexArray;
+        protoIndexArray->SetName("ProtoIndices");
+        protoIndexArray->SetNumberOfValues(numInstances);
+
+        vtkNew<vtkFloatArray> orientationArray;
+        orientationArray->SetName("Orientations");
+        orientationArray->SetNumberOfComponents(4);
+        orientationArray->SetNumberOfTuples(numInstances);
+
+        vtkNew<vtkFloatArray> scaleArray;
+        scaleArray->SetName("Scales");
+        scaleArray->SetNumberOfComponents(3);
+        scaleArray->SetNumberOfTuples(numInstances);
+
+        for (vtkIdType i = 0; i < numInstances; i++)
+        {
+          const pxr::GfVec3f& p = positions[i];
+          instancePoints->SetPoint(i, p[0], p[1], p[2]);
+
+          vtkIdType protoIdx =
+            i < static_cast<vtkIdType>(protoIndices.size()) ? protoIndices[i] : 0;
+          protoIndexArray->SetValue(i, protoIdx);
+
+          // vtkGlyph3DMapper expects quaternions as [w, x, y, z]
+          if (useOrientationsf && i < static_cast<vtkIdType>(orientationsf.size()))
+          {
+            const pxr::GfQuatf& q = orientationsf[i];
+            const pxr::GfVec3f& img = q.GetImaginary();
+            orientationArray->SetTuple4(i, q.GetReal(), img[0], img[1], img[2]);
+          }
+          else if (!useOrientationsf && i < static_cast<vtkIdType>(orientationsh.size()))
+          {
+            const pxr::GfQuath& q = orientationsh[i];
+            const pxr::GfVec3h& img = q.GetImaginary();
+            orientationArray->SetTuple4(i, static_cast<float>(q.GetReal()),
+              static_cast<float>(img[0]), static_cast<float>(img[1]), static_cast<float>(img[2]));
+          }
+          else
+          {
+            orientationArray->SetTuple4(i, 1.0f, 0.0f, 0.0f, 0.0f);
+          }
+
+          if (i < static_cast<vtkIdType>(scales.size()))
+          {
+            const pxr::GfVec3f& s = scales[i];
+            scaleArray->SetTuple3(i, s[0], s[1], s[2]);
+          }
+          else
+          {
+            scaleArray->SetTuple3(i, 1.0f, 1.0f, 1.0f);
           }
         }
+
+        vtkNew<vtkPolyData> instancePolyData;
+        instancePolyData->SetPoints(instancePoints);
+        instancePolyData->GetPointData()->AddArray(protoIndexArray);
+        instancePolyData->GetPointData()->AddArray(orientationArray);
+        instancePolyData->GetPointData()->AddArray(scaleArray);
+
+        vtkNew<vtkGlyph3DMapper> glyphMapper;
+        glyphMapper->SetInputData(instancePolyData);
+
+        for (std::size_t idx = 0; idx < prototypePolyData.size(); idx++)
+        {
+          glyphMapper->SetSourceData(static_cast<int>(idx), prototypePolyData[idx]);
+        }
+
+        glyphMapper->SourceIndexingOn();
+        glyphMapper->SetSourceIndexArray("ProtoIndices");
+        glyphMapper->SetOrientationArray("Orientations");
+        glyphMapper->SetOrientationModeToQuaternion();
+        glyphMapper->SetScaleArray("Scales");
+        glyphMapper->SetScaleModeToScaleByVectorComponents();
+
+        vtkNew<vtkActor> glyphActor;
+        glyphActor->SetMapper(glyphMapper);
+        glyphActor->SetUserMatrix(currentMatrix);
+        glyphActor->GetProperty()->SetInterpolationToPBR();
+
+        int actorIndex = actorCollection->GetNumberOfItems();
+        actorCollection->AddItem(glyphActor);
+
+        pxr::SdfPath instancerPath = path.AppendChild(prim.GetName());
+        int nodeId =
+          this->GetOrCreateHierarchyNode(hierarchy, instancerPath, prim.GetName().GetString());
+        hierarchy->SetAttribute(nodeId, "flat_actor_id", actorIndex);
+
+        renderer->AddActor(glyphActor);
       }
       else if (prim.IsA<pxr::UsdGeomGprim>())
       {
         pxr::UsdGeomGprim geomPrim = pxr::UsdGeomGprim(prim);
 
-        vtkSmartPointer<vtkPolyData> polydata;
         bool useDirectScalars = false;
-
-        if (prim.IsA<pxr::UsdGeomMesh>())
-        {
-          pxr::UsdGeomMesh meshPrim = pxr::UsdGeomMesh(prim);
-
-          vtkSmartPointer<vtkPolyData>& mappedPolydata =
-            this->MeshMap[meshPrim.GetPath().GetAsString()];
-          bool meshAlreadyExists = (mappedPolydata != nullptr);
-
-          // attributes
-          pxr::UsdAttribute normalsAttr = meshPrim.GetNormalsAttr();
-          pxr::UsdAttribute pointsAttr = meshPrim.GetPointsAttr();
-          pxr::UsdAttribute facesCountAttr = meshPrim.GetFaceVertexCountsAttr();
-          pxr::UsdAttribute facesIndicesAttr = meshPrim.GetFaceVertexIndicesAttr();
-
-          std::vector<pxr::UsdGeomPrimvar> primVars =
-            pxr::UsdGeomPrimvarsAPI(meshPrim).GetPrimvars();
-
-          auto TimeVarying = [](const auto& a) { return a.ValueMightBeTimeVarying(); };
-
-          bool animatedAttribute = std::ranges::any_of(primVars, TimeVarying);
-          animatedAttribute = animatedAttribute || TimeVarying(pointsAttr);
-          animatedAttribute = animatedAttribute || TimeVarying(normalsAttr);
-          animatedAttribute = animatedAttribute || TimeVarying(facesCountAttr);
-          animatedAttribute = animatedAttribute || TimeVarying(facesIndicesAttr);
-
-          // Check if the mesh has to be rebuilt
-          if (!meshAlreadyExists || animatedAttribute)
-          {
-            vtkNew<vtkPolyData> newPolyData;
-
-            // normals
-            pxr::VtArray<pxr::GfVec3f> normals;
-            normalsAttr.Get(&normals, timeCode);
-
-            if (normals.size() > 0)
-            {
-              vtkNew<vtkFloatArray> vNormals;
-              vNormals->SetName("Normals");
-              vNormals->SetNumberOfComponents(3);
-#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
-              vNormals->ReserveValues(normals.size());
-#else
-              vNormals->Allocate(normals.size());
-#endif
-
-              for (const pxr::GfVec3f& n : normals)
-              {
-                vNormals->InsertNextTuple3(n[0], n[1], n[2]);
-              }
-
-              vtkInformation* info = vNormals->GetInformation();
-              info->Set(vtkF3DFaceVaryingPointDispatcher::INTERPOLATION_TYPE(),
-                meshPrim.GetNormalsInterpolation() == pxr::UsdGeomTokens->faceVarying ? 1 : 0);
-
-              newPolyData->GetPointData()->SetNormals(vNormals);
-            }
-
-            // texture coordinates
-            bool firstArray = true;
-            for (const pxr::UsdGeomPrimvar& primVar : primVars)
-            {
-              if (primVar.GetTypeName() == "texCoord2f[]" || primVar.GetTypeName() == "float2[]")
-              {
-                pxr::VtArray<pxr::GfVec2f> uvs;
-                primVar.Get(&uvs, timeCode);
-
-                if (uvs.size() > 0)
-                {
-                  std::string name = primVar.GetPrimvarName();
-
-                  vtkNew<vtkFloatArray> texCoords;
-                  texCoords->SetName(name.c_str());
-                  texCoords->SetNumberOfComponents(2);
-
-                  if (primVar.IsIndexed())
-                  {
-                    pxr::UsdAttribute indicesAttr = primVar.GetIndicesAttr();
-
-                    pxr::VtArray<int> indices;
-                    if (indicesAttr.Get(&indices) && indices.size() > 0)
-                    {
-#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
-                      texCoords->ReserveValues(indices.size());
-#else
-                      texCoords->Allocate(indices.size());
-#endif
-
-                      for (int index : indices)
-                      {
-                        const pxr::GfVec2f& uv = uvs[index];
-                        texCoords->InsertNextTuple2(uv[0], uv[1]);
-                      }
-                    }
-                  }
-                  else
-                  {
-#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
-                    texCoords->ReserveValues(uvs.size());
-#else
-                    texCoords->Allocate(uvs.size());
-#endif
-
-                    for (const pxr::GfVec2f& uv : uvs)
-                    {
-                      texCoords->InsertNextTuple2(uv[0], uv[1]);
-                    }
-                  }
-
-                  vtkInformation* info = texCoords->GetInformation();
-                  info->Set(vtkF3DFaceVaryingPointDispatcher::INTERPOLATION_TYPE(),
-                    primVar.GetInterpolation() == pxr::UsdGeomTokens->faceVarying ? 1 : 0);
-
-                  // the size of the array can be larger than the number of points if the attribute
-                  // interpolation is face-varying.
-                  // It will be normalized by the vtkF3DFaceVaryingPointDispatcher later
-                  newPolyData->GetPointData()->AddArray(texCoords);
-
-                  if (firstArray)
-                  {
-                    // sometimes we are enable to fetch the array name to use for texture mapping
-                    // so we fallback to the first UV set added
-                    // see https://github.com/f3d-app/f3d/issues/1184
-                    firstArray = false;
-                    newPolyData->GetPointData()->SetTCoords(texCoords);
-                  }
-                }
-              }
-            }
-
-            // points
-            pxr::VtArray<pxr::GfVec3f> positions;
-            pointsAttr.Get(&positions, timeCode);
-
-            vtkNew<vtkPoints> points;
-#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
-            points->Reserve(positions.size());
-#else
-            points->Allocate(positions.size());
-#endif
-            for (const pxr::GfVec3f& p : positions)
-            {
-              points->InsertNextPoint(p[0], p[1], p[2]);
-            }
-
-            newPolyData->SetPoints(points);
-
-            // faces
-            pxr::VtArray<int> counts;
-            facesCountAttr.Get(&counts, timeCode);
-
-            pxr::VtArray<int> indices;
-            facesIndicesAttr.Get(&indices, timeCode);
-
-            // add polygons
-            vtkNew<vtkCellArray> cells;
-            auto currentCellIt = indices.cbegin();
-            std::vector<vtkIdType> indexArr;
-            for (int c : counts)
-            {
-              indexArr.clear();
-              indexArr.insert(indexArr.begin(), currentCellIt, std::next(currentCellIt, c));
-              cells->InsertNextCell(c, indexArr.data());
-              std::advance(currentCellIt, c);
-            }
-
-            newPolyData->SetPolys(cells);
-
-            if (pxr::UsdSkelSkinningQuery skinningQuery = this->SkelCache.GetSkinningQuery(prim))
-            {
-              // save skinning buffers to the polydata
-              if (skinningQuery.HasJointInfluences() && !meshAlreadyExists)
-              {
-                pxr::VtIntArray jointIndices;
-                pxr::VtFloatArray jointWeights;
-                int numInfluences = skinningQuery.GetNumInfluencesPerComponent();
-
-                if (skinningQuery.ComputeVaryingJointInfluences(
-                      positions.size(), &jointIndices, &jointWeights))
-                {
-                  vtkNew<vtkUnsignedShortArray> jointsArr;
-                  jointsArr->SetName("JOINTS_0");
-                  jointsArr->SetNumberOfComponents(4);
-                  jointsArr->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
-                  jointsArr->Fill(0);
-
-                  vtkNew<vtkFloatArray> weightsArr;
-                  weightsArr->SetName("WEIGHTS_0");
-                  weightsArr->SetNumberOfComponents(4);
-                  weightsArr->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
-                  weightsArr->Fill(0);
-
-                  // F3D mapper is limited to 4 influences
-                  int components = std::min(numInfluences, 4);
-
-                  std::vector<std::pair<float, int>> influences;
-                  influences.reserve(numInfluences);
-
-                  for (std::size_t i = 0; i < positions.size(); i++)
-                  {
-                    // point influences
-                    influences.resize(numInfluences);
-
-                    for (int j = 0; j < numInfluences; j++)
-                    {
-                      int idx = static_cast<int>(i) * numInfluences + j;
-                      influences[j] = std::make_pair(jointWeights[idx], jointIndices[idx]);
-                    }
-
-                    // Sort descending by weight to get the top 4
-                    std::ranges::partial_sort(influences, influences.begin() + components,
-                      [](const auto& a, const auto& b) { return a.first > b.first; });
-
-                    float totalWeight = 0.0f;
-                    for (int j = 0; j < components; j++)
-                    {
-                      jointsArr->SetTypedComponent(static_cast<vtkIdType>(i), j,
-                        static_cast<unsigned short>(influences[j].second));
-                      weightsArr->SetTypedComponent(
-                        static_cast<vtkIdType>(i), j, influences[j].first);
-                      totalWeight += influences[j].first;
-                    }
-
-                    // Re-normalize after potential truncation
-                    if (totalWeight > 0.0f)
-                    {
-                      for (int j = 0; j < components; j++)
-                      {
-                        float w = weightsArr->GetTypedComponent(static_cast<vtkIdType>(i), j);
-                        weightsArr->SetTypedComponent(
-                          static_cast<vtkIdType>(i), j, w / totalWeight);
-                      }
-                    }
-                  }
-                  newPolyData->GetPointData()->AddArray(jointsArr);
-                  newPolyData->GetPointData()->AddArray(weightsArr);
-                }
-              }
-
-              // save morphing info (aka blend shapes)
-              if (skinningQuery.HasBlendShapes() && !meshAlreadyExists)
-              {
-                MorphingInfo& info = this->MorphingMap[meshPrim.GetPath().GetAsString()];
-
-                // Cache blend shape data for per-frame CPU deformation
-                info.BindPositions = positions;
-                pxr::UsdSkelBindingAPI binding(prim);
-                pxr::UsdSkelBlendShapeQuery blendShapeQuery(binding);
-                if (blendShapeQuery)
-                {
-                  info.BlendShapePointIndices = blendShapeQuery.ComputeBlendShapePointIndices();
-                  info.SubShapePointOffsets = blendShapeQuery.ComputeSubShapePointOffsets();
-                }
-              }
-            }
-
-            vtkNew<vtkF3DFaceVaryingPointDispatcher> faceVaryingFilter;
-            faceVaryingFilter->SetInputData(newPolyData);
-            faceVaryingFilter->Update();
-
-            mappedPolydata = faceVaryingFilter->GetOutput();
-          }
-
-          polydata = mappedPolydata;
-        }
-        else if (prim.IsA<pxr::UsdGeomSphere>())
-        {
-          pxr::UsdGeomSphere spherePrim = pxr::UsdGeomSphere(prim);
-
-          vtkNew<vtkSphereSource> sphere;
-          sphere->SetThetaResolution(20);
-          sphere->SetPhiResolution(20);
-
-          double radius;
-          if (spherePrim.GetRadiusAttr().Get(&radius))
-          {
-            sphere->SetRadius(radius);
-          }
-
-          sphere->Update();
-          polydata = sphere->GetOutput();
-        }
-        else if (prim.IsA<pxr::UsdGeomCube>())
-        {
-          pxr::UsdGeomCube cubePrim = pxr::UsdGeomCube(prim);
-
-          vtkNew<vtkCubeSource> cube;
-
-          double length;
-          if (cubePrim.GetSizeAttr().Get(&length))
-          {
-            cube->SetXLength(length);
-            cube->SetYLength(length);
-            cube->SetZLength(length);
-          }
-
-          cube->Update();
-          polydata = cube->GetOutput();
-        }
-        else if (prim.IsA<pxr::UsdGeomCapsule>())
-        {
-          pxr::UsdGeomCapsule capsulePrim = pxr::UsdGeomCapsule(prim);
-
-          vtkNew<vtkCylinderSource> capsule;
-          capsule->CapsuleCapOn();
-
-          double height;
-          if (capsulePrim.GetHeightAttr().Get(&height))
-          {
-            capsule->SetHeight(height);
-          }
-
-          double radius;
-          if (capsulePrim.GetRadiusAttr().Get(&radius))
-          {
-            capsule->SetRadius(radius);
-          }
-
-          // In VTK, the capsule is aligned with the Y axis
-          // In USD, the default is aligned with Z, but can be modified
-          // Let's rotate it if needed
-          vtkNew<vtkTransformFilter> transform;
-          vtkNew<vtkTransform> t;
-          transform->SetTransform(t);
-
-          pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
-          capsulePrim.GetAxisAttr().Get(&axisToken);
-
-          if (axisToken == pxr::UsdGeomTokens->x)
-          {
-            t->RotateZ(90.0);
-          }
-          else if (axisToken == pxr::UsdGeomTokens->z)
-          {
-            t->RotateX(90.0);
-          }
-
-          transform->SetInputConnection(capsule->GetOutputPort());
-          transform->Update();
-          polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
-        }
-        else if (prim.IsA<pxr::UsdGeomCylinder>())
-        {
-          pxr::UsdGeomCylinder cylinderPrim = pxr::UsdGeomCylinder(prim);
-          vtkNew<vtkCylinderSource> cylinder;
-          cylinder->SetResolution(20);
-
-          double height;
-          if (cylinderPrim.GetHeightAttr().Get(&height))
-          {
-            cylinder->SetHeight(height);
-          }
-
-          double radius;
-          if (cylinderPrim.GetRadiusAttr().Get(&radius))
-          {
-            cylinder->SetRadius(radius);
-          }
-
-          // In VTK, the cylinder is aligned with the Y axis
-          // In USD, the default is aligned with Z, but can be modified
-          // Let's rotate it if needed
-          vtkNew<vtkTransformFilter> transform;
-          vtkNew<vtkTransform> t;
-          transform->SetTransform(t);
-
-          pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
-          cylinderPrim.GetAxisAttr().Get(&axisToken);
-
-          if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->x))
-          {
-            t->RotateZ(90.0);
-          }
-          else if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->z))
-          {
-            t->RotateX(90.0);
-          }
-
-          transform->SetInputConnection(cylinder->GetOutputPort());
-          transform->Update();
-          polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
-        }
-        else if (prim.IsA<pxr::UsdGeomCone>())
-        {
-          pxr::UsdGeomCone conePrim = pxr::UsdGeomCone(prim);
-          vtkNew<vtkConeSource> cone;
-          cone->SetResolution(20);
-
-          double height;
-          if (conePrim.GetHeightAttr().Get(&height))
-          {
-            cone->SetHeight(height);
-          }
-
-          double radius;
-          if (conePrim.GetRadiusAttr().Get(&radius))
-          {
-            cone->SetRadius(radius);
-          }
-
-          // In VTK, the cylinder is aligned with the X axis
-          // In USD, the default is aligned with Z, but can be modified
-          // Let's rotate it if needed
-          vtkNew<vtkTransformFilter> transform;
-          vtkNew<vtkTransform> t;
-          transform->SetTransform(t);
-
-          pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
-          conePrim.GetAxisAttr().Get(&axisToken);
-
-          if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->y))
-          {
-            t->RotateZ(90.0);
-          }
-          else if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->z))
-          {
-            t->RotateY(90.0);
-          }
-
-          transform->SetInputConnection(cone->GetOutputPort());
-          transform->Update();
-          polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
-        }
-        else if (prim.IsA<pxr::UsdGeomPoints>())
-        {
-          pxr::UsdGeomPoints pointsPrim = pxr::UsdGeomPoints(prim);
-
-          pxr::VtArray<pxr::GfVec3f> positions;
-          pointsPrim.GetPointsAttr().Get(&positions, timeCode);
-
-          vtkNew<vtkPolyData> newPolyData;
-
-          vtkNew<vtkPoints> points;
-          points->SetNumberOfPoints(static_cast<vtkIdType>(positions.size()));
-          for (std::size_t i = 0; i < positions.size(); i++)
-          {
-            const pxr::GfVec3f& p = positions[i];
-            points->SetPoint(static_cast<vtkIdType>(i), p[0], p[1], p[2]);
-          }
-          newPolyData->SetPoints(points);
-
-          if (positions.size() > 0)
-          {
-            vtkNew<vtkIdTypeArray> vertIds;
-            vertIds->SetNumberOfValues(static_cast<vtkIdType>(positions.size()));
-            for (std::size_t i = 0; i < positions.size(); i++)
-            {
-              vertIds->SetValue(static_cast<vtkIdType>(i), static_cast<vtkIdType>(i));
-            }
-
-            vtkNew<vtkCellArray> verts;
-            verts->SetData(static_cast<vtkIdType>(positions.size()), vertIds);
-            newPolyData->SetVerts(verts);
-          }
-
-          pxr::UsdGeomPrimvar colorPrimvar = pointsPrim.GetDisplayColorPrimvar();
-          pxr::UsdGeomPrimvar opacityPrimvar = pointsPrim.GetDisplayOpacityPrimvar();
-
-          pxr::VtArray<pxr::GfVec3f> colors;
-          const bool hasColors =
-            colorPrimvar && colorPrimvar.Get(&colors, timeCode) && colors.size() > 0;
-
-          pxr::VtArray<float> opacities;
-          const bool hasOpacity =
-            opacityPrimvar && opacityPrimvar.Get(&opacities, timeCode) && opacities.size() > 0;
-
-          if (hasColors || hasOpacity)
-          {
-            const int numComps = hasOpacity ? 4 : 3;
-            vtkNew<vtkFloatArray> pointColors;
-            pointColors->SetName(hasOpacity ? "RGBA" : "RGB");
-            pointColors->SetNumberOfComponents(numComps);
-            pointColors->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
-
-            for (std::size_t i = 0; i < positions.size(); i++)
-            {
-              const std::size_t colorIndex = hasColors && colors.size() == positions.size() ? i : 0;
-              const std::size_t opacityIndex =
-                hasOpacity && opacities.size() == positions.size() ? i : 0;
-              const pxr::GfVec3f c = hasColors ? colors[colorIndex] : pxr::GfVec3f(1.f);
-
-              if (hasOpacity)
-              {
-                const float rgba[4] = { c[0], c[1], c[2], opacities[opacityIndex] };
-                pointColors->SetTypedTuple(static_cast<vtkIdType>(i), rgba);
-              }
-              else
-              {
-                const float rgb[3] = { c[0], c[1], c[2] };
-                pointColors->SetTypedTuple(static_cast<vtkIdType>(i), rgb);
-              }
-            }
-
-            newPolyData->GetPointData()->SetScalars(pointColors);
-            useDirectScalars = true;
-          }
-
-          polydata = newPolyData;
-        }
-        else
-        {
-          // unsupported primitive, fallback to an empty polydata
-          vtkWarningWithObjectMacro(nullptr, "Unknown geometry type: " << prim.GetName());
-          polydata = vtkSmartPointer<vtkPolyData>::New();
-        }
+        vtkSmartPointer<vtkPolyData> polydata =
+          this->ConvertGprimToPolyData(prim, timeCode, useDirectScalars);
 
         // create actors
 
@@ -1013,6 +652,517 @@ public:
         this->ImportNode(renderer, hierarchy, actorCollection, prim, nodePath, currentMatrix);
       }
     }
+  }
+
+  vtkSmartPointer<vtkPolyData> ConvertGprimToPolyData(
+    const pxr::UsdPrim& prim, pxr::UsdTimeCode timeCode, bool& useDirectScalars)
+  {
+    vtkSmartPointer<vtkPolyData> polydata;
+    useDirectScalars = false;
+
+    if (prim.IsA<pxr::UsdGeomMesh>())
+    {
+      pxr::UsdGeomMesh meshPrim = pxr::UsdGeomMesh(prim);
+
+      vtkSmartPointer<vtkPolyData>& mappedPolydata =
+        this->MeshMap[meshPrim.GetPath().GetAsString()];
+      bool meshAlreadyExists = (mappedPolydata != nullptr);
+
+      // attributes
+      pxr::UsdAttribute normalsAttr = meshPrim.GetNormalsAttr();
+      pxr::UsdAttribute pointsAttr = meshPrim.GetPointsAttr();
+      pxr::UsdAttribute facesCountAttr = meshPrim.GetFaceVertexCountsAttr();
+      pxr::UsdAttribute facesIndicesAttr = meshPrim.GetFaceVertexIndicesAttr();
+
+      std::vector<pxr::UsdGeomPrimvar> primVars = pxr::UsdGeomPrimvarsAPI(meshPrim).GetPrimvars();
+
+      auto TimeVarying = [](const auto& a) { return a.ValueMightBeTimeVarying(); };
+
+      bool animatedAttribute = std::ranges::any_of(primVars, TimeVarying);
+      animatedAttribute = animatedAttribute || TimeVarying(pointsAttr);
+      animatedAttribute = animatedAttribute || TimeVarying(normalsAttr);
+      animatedAttribute = animatedAttribute || TimeVarying(facesCountAttr);
+      animatedAttribute = animatedAttribute || TimeVarying(facesIndicesAttr);
+
+      // Check if the mesh has to be rebuilt
+      if (!meshAlreadyExists || animatedAttribute)
+      {
+        vtkNew<vtkPolyData> newPolyData;
+
+        // normals
+        pxr::VtArray<pxr::GfVec3f> normals;
+        normalsAttr.Get(&normals, timeCode);
+
+        if (normals.size() > 0)
+        {
+          vtkNew<vtkFloatArray> vNormals;
+          vNormals->SetName("Normals");
+          vNormals->SetNumberOfComponents(3);
+#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
+          vNormals->ReserveValues(normals.size());
+#else
+          vNormals->Allocate(normals.size());
+#endif
+
+          for (const pxr::GfVec3f& n : normals)
+          {
+            vNormals->InsertNextTuple3(n[0], n[1], n[2]);
+          }
+
+          vtkInformation* info = vNormals->GetInformation();
+          info->Set(vtkF3DFaceVaryingPointDispatcher::INTERPOLATION_TYPE(),
+            meshPrim.GetNormalsInterpolation() == pxr::UsdGeomTokens->faceVarying ? 1 : 0);
+
+          newPolyData->GetPointData()->SetNormals(vNormals);
+        }
+
+        // texture coordinates
+        bool firstArray = true;
+        for (const pxr::UsdGeomPrimvar& primVar : primVars)
+        {
+          if (primVar.GetTypeName() == "texCoord2f[]" || primVar.GetTypeName() == "float2[]")
+          {
+            pxr::VtArray<pxr::GfVec2f> uvs;
+            primVar.Get(&uvs, timeCode);
+
+            if (uvs.size() > 0)
+            {
+              std::string name = primVar.GetPrimvarName();
+
+              vtkNew<vtkFloatArray> texCoords;
+              texCoords->SetName(name.c_str());
+              texCoords->SetNumberOfComponents(2);
+
+              if (primVar.IsIndexed())
+              {
+                pxr::UsdAttribute indicesAttr = primVar.GetIndicesAttr();
+
+                pxr::VtArray<int> indices;
+                if (indicesAttr.Get(&indices) && indices.size() > 0)
+                {
+#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
+                  texCoords->ReserveValues(indices.size());
+#else
+                  texCoords->Allocate(indices.size());
+#endif
+
+                  for (int index : indices)
+                  {
+                    const pxr::GfVec2f& uv = uvs[index];
+                    texCoords->InsertNextTuple2(uv[0], uv[1]);
+                  }
+                }
+              }
+              else
+              {
+#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
+                texCoords->ReserveValues(uvs.size());
+#else
+                texCoords->Allocate(uvs.size());
+#endif
+
+                for (const pxr::GfVec2f& uv : uvs)
+                {
+                  texCoords->InsertNextTuple2(uv[0], uv[1]);
+                }
+              }
+
+              vtkInformation* info = texCoords->GetInformation();
+              info->Set(vtkF3DFaceVaryingPointDispatcher::INTERPOLATION_TYPE(),
+                primVar.GetInterpolation() == pxr::UsdGeomTokens->faceVarying ? 1 : 0);
+
+              // the size of the array can be larger than the number of points if the attribute
+              // interpolation is face-varying.
+              // It will be normalized by the vtkF3DFaceVaryingPointDispatcher later
+              newPolyData->GetPointData()->AddArray(texCoords);
+
+              if (firstArray)
+              {
+                // sometimes we are enable to fetch the array name to use for texture mapping
+                // so we fallback to the first UV set added
+                // see https://github.com/f3d-app/f3d/issues/1184
+                firstArray = false;
+                newPolyData->GetPointData()->SetTCoords(texCoords);
+              }
+            }
+          }
+        }
+
+        // points
+        pxr::VtArray<pxr::GfVec3f> positions;
+        pointsAttr.Get(&positions, timeCode);
+
+        vtkNew<vtkPoints> points;
+#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 6, 20260320)
+        points->Reserve(positions.size());
+#else
+        points->Allocate(positions.size());
+#endif
+        for (const pxr::GfVec3f& p : positions)
+        {
+          points->InsertNextPoint(p[0], p[1], p[2]);
+        }
+
+        newPolyData->SetPoints(points);
+
+        // faces
+        pxr::VtArray<int> counts;
+        facesCountAttr.Get(&counts, timeCode);
+
+        pxr::VtArray<int> indices;
+        facesIndicesAttr.Get(&indices, timeCode);
+
+        // add polygons
+        vtkNew<vtkCellArray> cells;
+        auto currentCellIt = indices.cbegin();
+        std::vector<vtkIdType> indexArr;
+        for (int c : counts)
+        {
+          indexArr.clear();
+          indexArr.insert(indexArr.begin(), currentCellIt, std::next(currentCellIt, c));
+          cells->InsertNextCell(c, indexArr.data());
+          std::advance(currentCellIt, c);
+        }
+
+        newPolyData->SetPolys(cells);
+
+        if (pxr::UsdSkelSkinningQuery skinningQuery = this->SkelCache.GetSkinningQuery(prim))
+        {
+          // save skinning buffers to the polydata
+          if (skinningQuery.HasJointInfluences() && !meshAlreadyExists)
+          {
+            pxr::VtIntArray jointIndices;
+            pxr::VtFloatArray jointWeights;
+            int numInfluences = skinningQuery.GetNumInfluencesPerComponent();
+
+            if (skinningQuery.ComputeVaryingJointInfluences(
+                  positions.size(), &jointIndices, &jointWeights))
+            {
+              vtkNew<vtkUnsignedShortArray> jointsArr;
+              jointsArr->SetName("JOINTS_0");
+              jointsArr->SetNumberOfComponents(4);
+              jointsArr->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
+              jointsArr->Fill(0);
+
+              vtkNew<vtkFloatArray> weightsArr;
+              weightsArr->SetName("WEIGHTS_0");
+              weightsArr->SetNumberOfComponents(4);
+              weightsArr->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
+              weightsArr->Fill(0);
+
+              // F3D mapper is limited to 4 influences
+              int components = std::min(numInfluences, 4);
+
+              std::vector<std::pair<float, int>> influences;
+              influences.reserve(numInfluences);
+
+              for (std::size_t i = 0; i < positions.size(); i++)
+              {
+                // point influences
+                influences.resize(numInfluences);
+
+                for (int j = 0; j < numInfluences; j++)
+                {
+                  int idx = static_cast<int>(i) * numInfluences + j;
+                  influences[j] = std::make_pair(jointWeights[idx], jointIndices[idx]);
+                }
+
+                // Sort descending by weight to get the top 4
+                std::ranges::partial_sort(influences, influences.begin() + components,
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
+
+                float totalWeight = 0.0f;
+                for (int j = 0; j < components; j++)
+                {
+                  jointsArr->SetTypedComponent(static_cast<vtkIdType>(i), j,
+                    static_cast<unsigned short>(influences[j].second));
+                  weightsArr->SetTypedComponent(static_cast<vtkIdType>(i), j, influences[j].first);
+                  totalWeight += influences[j].first;
+                }
+
+                // Re-normalize after potential truncation
+                if (totalWeight > 0.0f)
+                {
+                  for (int j = 0; j < components; j++)
+                  {
+                    float w = weightsArr->GetTypedComponent(static_cast<vtkIdType>(i), j);
+                    weightsArr->SetTypedComponent(static_cast<vtkIdType>(i), j, w / totalWeight);
+                  }
+                }
+              }
+              newPolyData->GetPointData()->AddArray(jointsArr);
+              newPolyData->GetPointData()->AddArray(weightsArr);
+            }
+          }
+
+          // save morphing info (aka blend shapes)
+          if (skinningQuery.HasBlendShapes() && !meshAlreadyExists)
+          {
+            MorphingInfo& info = this->MorphingMap[meshPrim.GetPath().GetAsString()];
+
+            // Cache blend shape data for per-frame CPU deformation
+            info.BindPositions = positions;
+            pxr::UsdSkelBindingAPI binding(prim);
+            pxr::UsdSkelBlendShapeQuery blendShapeQuery(binding);
+            if (blendShapeQuery)
+            {
+              info.BlendShapePointIndices = blendShapeQuery.ComputeBlendShapePointIndices();
+              info.SubShapePointOffsets = blendShapeQuery.ComputeSubShapePointOffsets();
+            }
+          }
+        }
+
+        vtkNew<vtkF3DFaceVaryingPointDispatcher> faceVaryingFilter;
+        faceVaryingFilter->SetInputData(newPolyData);
+        faceVaryingFilter->Update();
+
+        mappedPolydata = faceVaryingFilter->GetOutput();
+      }
+
+      polydata = mappedPolydata;
+    }
+    else if (prim.IsA<pxr::UsdGeomSphere>())
+    {
+      pxr::UsdGeomSphere spherePrim = pxr::UsdGeomSphere(prim);
+
+      vtkNew<vtkSphereSource> sphere;
+      sphere->SetThetaResolution(20);
+      sphere->SetPhiResolution(20);
+
+      double radius;
+      if (spherePrim.GetRadiusAttr().Get(&radius))
+      {
+        sphere->SetRadius(radius);
+      }
+
+      sphere->Update();
+      polydata = sphere->GetOutput();
+    }
+    else if (prim.IsA<pxr::UsdGeomCube>())
+    {
+      pxr::UsdGeomCube cubePrim = pxr::UsdGeomCube(prim);
+
+      vtkNew<vtkCubeSource> cube;
+
+      double length;
+      if (cubePrim.GetSizeAttr().Get(&length))
+      {
+        cube->SetXLength(length);
+        cube->SetYLength(length);
+        cube->SetZLength(length);
+      }
+
+      cube->Update();
+      polydata = cube->GetOutput();
+    }
+    else if (prim.IsA<pxr::UsdGeomCapsule>())
+    {
+      pxr::UsdGeomCapsule capsulePrim = pxr::UsdGeomCapsule(prim);
+
+      vtkNew<vtkCylinderSource> capsule;
+      capsule->CapsuleCapOn();
+
+      double height;
+      if (capsulePrim.GetHeightAttr().Get(&height))
+      {
+        capsule->SetHeight(height);
+      }
+
+      double radius;
+      if (capsulePrim.GetRadiusAttr().Get(&radius))
+      {
+        capsule->SetRadius(radius);
+      }
+
+      // In VTK, the capsule is aligned with the Y axis
+      // In USD, the default is aligned with Z, but can be modified
+      // Let's rotate it if needed
+      vtkNew<vtkTransformFilter> transform;
+      vtkNew<vtkTransform> t;
+      transform->SetTransform(t);
+
+      pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
+      capsulePrim.GetAxisAttr().Get(&axisToken);
+
+      if (axisToken == pxr::UsdGeomTokens->x)
+      {
+        t->RotateZ(90.0);
+      }
+      else if (axisToken == pxr::UsdGeomTokens->z)
+      {
+        t->RotateX(90.0);
+      }
+
+      transform->SetInputConnection(capsule->GetOutputPort());
+      transform->Update();
+      polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
+    }
+    else if (prim.IsA<pxr::UsdGeomCylinder>())
+    {
+      pxr::UsdGeomCylinder cylinderPrim = pxr::UsdGeomCylinder(prim);
+      vtkNew<vtkCylinderSource> cylinder;
+      cylinder->SetResolution(20);
+
+      double height;
+      if (cylinderPrim.GetHeightAttr().Get(&height))
+      {
+        cylinder->SetHeight(height);
+      }
+
+      double radius;
+      if (cylinderPrim.GetRadiusAttr().Get(&radius))
+      {
+        cylinder->SetRadius(radius);
+      }
+
+      // In VTK, the cylinder is aligned with the Y axis
+      // In USD, the default is aligned with Z, but can be modified
+      // Let's rotate it if needed
+      vtkNew<vtkTransformFilter> transform;
+      vtkNew<vtkTransform> t;
+      transform->SetTransform(t);
+
+      pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
+      cylinderPrim.GetAxisAttr().Get(&axisToken);
+
+      if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->x))
+      {
+        t->RotateZ(90.0);
+      }
+      else if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->z))
+      {
+        t->RotateX(90.0);
+      }
+
+      transform->SetInputConnection(cylinder->GetOutputPort());
+      transform->Update();
+      polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
+    }
+    else if (prim.IsA<pxr::UsdGeomCone>())
+    {
+      pxr::UsdGeomCone conePrim = pxr::UsdGeomCone(prim);
+      vtkNew<vtkConeSource> cone;
+      cone->SetResolution(20);
+
+      double height;
+      if (conePrim.GetHeightAttr().Get(&height))
+      {
+        cone->SetHeight(height);
+      }
+
+      double radius;
+      if (conePrim.GetRadiusAttr().Get(&radius))
+      {
+        cone->SetRadius(radius);
+      }
+
+      // In VTK, the cylinder is aligned with the X axis
+      // In USD, the default is aligned with Z, but can be modified
+      // Let's rotate it if needed
+      vtkNew<vtkTransformFilter> transform;
+      vtkNew<vtkTransform> t;
+      transform->SetTransform(t);
+
+      pxr::TfToken axisToken(pxr::UsdGeomTokens->z);
+      conePrim.GetAxisAttr().Get(&axisToken);
+
+      if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->y))
+      {
+        t->RotateZ(90.0);
+      }
+      else if (axisToken == pxr::TfToken(pxr::UsdGeomTokens->z))
+      {
+        t->RotateY(90.0);
+      }
+
+      transform->SetInputConnection(cone->GetOutputPort());
+      transform->Update();
+      polydata = vtkPolyData::SafeDownCast(transform->GetOutput());
+    }
+    else if (prim.IsA<pxr::UsdGeomPoints>())
+    {
+      pxr::UsdGeomPoints pointsPrim = pxr::UsdGeomPoints(prim);
+
+      pxr::VtArray<pxr::GfVec3f> positions;
+      pointsPrim.GetPointsAttr().Get(&positions, timeCode);
+
+      vtkNew<vtkPolyData> newPolyData;
+
+      vtkNew<vtkPoints> points;
+      points->SetNumberOfPoints(static_cast<vtkIdType>(positions.size()));
+      for (std::size_t i = 0; i < positions.size(); i++)
+      {
+        const pxr::GfVec3f& p = positions[i];
+        points->SetPoint(static_cast<vtkIdType>(i), p[0], p[1], p[2]);
+      }
+      newPolyData->SetPoints(points);
+
+      if (positions.size() > 0)
+      {
+        vtkNew<vtkIdTypeArray> vertIds;
+        vertIds->SetNumberOfValues(static_cast<vtkIdType>(positions.size()));
+        for (std::size_t i = 0; i < positions.size(); i++)
+        {
+          vertIds->SetValue(static_cast<vtkIdType>(i), static_cast<vtkIdType>(i));
+        }
+
+        vtkNew<vtkCellArray> verts;
+        verts->SetData(static_cast<vtkIdType>(positions.size()), vertIds);
+        newPolyData->SetVerts(verts);
+      }
+
+      pxr::UsdGeomPrimvar colorPrimvar = pointsPrim.GetDisplayColorPrimvar();
+      pxr::UsdGeomPrimvar opacityPrimvar = pointsPrim.GetDisplayOpacityPrimvar();
+
+      pxr::VtArray<pxr::GfVec3f> colors;
+      const bool hasColors =
+        colorPrimvar && colorPrimvar.Get(&colors, timeCode) && colors.size() > 0;
+
+      pxr::VtArray<float> opacities;
+      const bool hasOpacity =
+        opacityPrimvar && opacityPrimvar.Get(&opacities, timeCode) && opacities.size() > 0;
+
+      if (hasColors || hasOpacity)
+      {
+        const int numComps = hasOpacity ? 4 : 3;
+        vtkNew<vtkFloatArray> pointColors;
+        pointColors->SetName(hasOpacity ? "RGBA" : "RGB");
+        pointColors->SetNumberOfComponents(numComps);
+        pointColors->SetNumberOfTuples(static_cast<vtkIdType>(positions.size()));
+
+        for (std::size_t i = 0; i < positions.size(); i++)
+        {
+          const std::size_t colorIndex = hasColors && colors.size() == positions.size() ? i : 0;
+          const std::size_t opacityIndex =
+            hasOpacity && opacities.size() == positions.size() ? i : 0;
+          const pxr::GfVec3f c = hasColors ? colors[colorIndex] : pxr::GfVec3f(1.f);
+
+          if (hasOpacity)
+          {
+            const float rgba[4] = { c[0], c[1], c[2], opacities[opacityIndex] };
+            pointColors->SetTypedTuple(static_cast<vtkIdType>(i), rgba);
+          }
+          else
+          {
+            const float rgb[3] = { c[0], c[1], c[2] };
+            pointColors->SetTypedTuple(static_cast<vtkIdType>(i), rgb);
+          }
+        }
+
+        newPolyData->GetPointData()->SetScalars(pointColors);
+        useDirectScalars = true;
+      }
+
+      polydata = newPolyData;
+    }
+    else
+    {
+      // unsupported primitive, fallback to an empty polydata
+      vtkWarningWithObjectMacro(nullptr, "Unknown geometry type: " << prim.GetName());
+      polydata = vtkSmartPointer<vtkPolyData>::New();
+    }
+
+    return polydata;
   }
 
   void BuildArmature(

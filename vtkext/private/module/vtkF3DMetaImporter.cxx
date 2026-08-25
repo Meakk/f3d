@@ -451,6 +451,9 @@ bool vtkF3DMetaImporter::Update()
     actorCollection->InitTraversal(ait);
     while (vtkActor* actor = actorCollection->GetNextActor(ait))
     {
+      // Add to the actor collection
+      this->ActorCollection->AddItem(actor);
+
       // Check for actor's poly data mapper, skip if none exists
       vtkPolyDataMapper* pdMapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
       if (pdMapper == nullptr)
@@ -459,9 +462,6 @@ bool vtkF3DMetaImporter::Update()
           F3DLog::Severity::Warning, "Actor has no mapped poly data and will not be rendered.");
         continue;
       }
-
-      // Add to the actor collection
-      this->ActorCollection->AddItem(actor);
 
       vtkPolyData* surface = pdMapper->GetInput();
 
@@ -923,17 +923,16 @@ void vtkF3DMetaImporter::UpdateInfoForColoring()
       actorCollection->InitTraversal(ait);
       while (auto* actor = actorCollection->GetNextActor(ait))
       {
-        vtkPolyDataMapper* pdMapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
         // Check for actor's poly data mapper, skip if none exists
-        if (pdMapper == nullptr)
+        if (actor->GetMapper() == nullptr)
         {
           F3DLog::Print(
-            F3DLog::Severity::Warning, "Actor has no mapped poly data and will not be colored.");
+            F3DLog::Severity::Warning, "Actor has no mapper and will not be colored.");
           continue;
         }
 
         // Update coloring vectors, with a dedicated logic for generic importer
-        vtkDataSet* datasetForColoring = pdMapper->GetInput();
+        vtkDataSet* datasetForColoring = actor->GetMapper()->GetInput();
         if (genericImporter)
         {
           // Use indexed accessor for composite support
