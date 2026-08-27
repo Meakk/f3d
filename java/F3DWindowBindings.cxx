@@ -3,6 +3,7 @@
 #include <app_f3d_F3D_Window.h>
 
 #include <types.h>
+#include <video_frame.h>
 #include <window.h>
 
 extern "C"
@@ -67,6 +68,19 @@ extern "C"
     jmethodID constructor = env->GetMethodID(imageClass, "<init>", "(J)V");
 
     jobject result = env->NewObject(imageClass, constructor, reinterpret_cast<jlong>(img));
+
+    return result;
+  }
+
+  JNIEXPORT jobject JAVA_BIND(Window, getVideoFrame)(JNIEnv* env, jobject self)
+  {
+    f3d::window& win = GetEngine(env, self)->getWindow();
+    f3d::video_frame* frame = new f3d::video_frame(win.getVideoFrame());
+
+    JniLocalRef<jclass> frameClass(env, env->FindClass("app/f3d/F3D/VideoFrame"));
+    jmethodID constructor = env->GetMethodID(frameClass, "<init>", "(J)V");
+
+    jobject result = env->NewObject(frameClass, constructor, reinterpret_cast<jlong>(frame));
 
     return result;
   }

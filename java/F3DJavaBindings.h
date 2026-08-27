@@ -5,6 +5,7 @@
 
 #include <engine.h>
 #include <image.h>
+#include <video_encoder.h>
 
 #include <map>
 #include <string>
@@ -156,6 +157,36 @@ inline f3d::image* GetImage(JNIEnv* env, jobject self)
   jlong ptr = env->GetLongField(self, fid);
 
   return reinterpret_cast<f3d::image*>(ptr);
+}
+
+// Helper function to get the f3d::video_frame pointer from a Java object
+inline f3d::video_frame* GetVideoFrame(JNIEnv* env, jobject self)
+{
+  JniLocalRef<jclass> cls(env, env->GetObjectClass(self));
+  jfieldID fid = env->GetFieldID(cls, "mNativeAddress", "J");
+  jlong ptr = env->GetLongField(self, fid);
+
+  return reinterpret_cast<f3d::video_frame*>(ptr);
+}
+
+// Helper function to get the f3d::video_packet pointer from a Java object
+inline f3d::video_packet* GetVideoPacket(JNIEnv* env, jobject self)
+{
+  JniLocalRef<jclass> cls(env, env->GetObjectClass(self));
+  jfieldID fid = env->GetFieldID(cls, "mNativeAddress", "J");
+  jlong ptr = env->GetLongField(self, fid);
+
+  return reinterpret_cast<f3d::video_packet*>(ptr);
+}
+
+// Helper function to get the f3d::video_encoder pointer from a Java object
+inline f3d::video_encoder* GetVideoEncoder(JNIEnv* env, jobject self)
+{
+  JniLocalRef<jclass> cls(env, env->GetObjectClass(self));
+  jfieldID fid = env->GetFieldID(cls, "mNativeAddress", "J");
+  jlong ptr = env->GetLongField(self, fid);
+
+  return reinterpret_cast<f3d::video_encoder*>(ptr);
 }
 
 // Helper function to convert std::vector<std::string> to Java List

@@ -1,5 +1,6 @@
 #include "window_c_api.h"
 #include "image.h"
+#include "video_frame.h"
 #include "window.h"
 
 //----------------------------------------------------------------------------
@@ -247,4 +248,17 @@ double f3d_window_get_dpi_scale(f3d_window_t* window)
 
   f3d::window* cpp_window = reinterpret_cast<f3d::window*>(window);
   return cpp_window->getDPIScale();
+}
+
+//----------------------------------------------------------------------------
+f3d_video_frame_t* f3d_window_get_video_frame(f3d_window_t* window)
+{
+  if (!window)
+  {
+    return nullptr;
+  }
+
+  f3d::window* cpp_window = reinterpret_cast<f3d::window*>(window);
+  f3d::video_frame* frame = new f3d::video_frame(cpp_window->getVideoFrame());
+  return reinterpret_cast<f3d_video_frame_t*>(frame);
 }

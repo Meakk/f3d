@@ -8,6 +8,7 @@
 #include "interactor.h"
 #include "options.h"
 #include "scene.h"
+#include "video_encoder.h"
 #include "window.h"
 
 // This is needed to avoid compilation issues because the destructors are protected
@@ -411,6 +412,7 @@ EMSCRIPTEN_BINDINGS(f3d)
     .function("getCamera", &f3d::window::getCamera, emscripten::return_value_policy::reference())
     .function("render", &f3d::window::render)
     .function("renderToImage", &f3d::window::renderToImage)
+    .function("getVideoFrame", &f3d::window::getVideoFrame)
     .function("setSize", &f3d::window::setSize, emscripten::return_value_policy::reference())
     .property(
       "size",
@@ -434,6 +436,57 @@ EMSCRIPTEN_BINDINGS(f3d)
           { jsArray[0].as<float>(), jsArray[1].as<float>(), jsArray[2].as<float>() }));
       })
     .function("getDPIScale", &f3d::window::getDPIScale);
+
+  // f3d::video_frame
+  emscripten::class_<f3d::video_frame>("VideoFrame")
+    .constructor<int, int>()
+    .function("setTimestamp", &f3d::video_frame::setTimestamp,
+      emscripten::return_value_policy::reference());
+
+  // f3d::video_packet
+  emscripten::class_<f3d::video_packet>("VideoPacket")
+    .function(
+      "getPacketData",
+      +[](const f3d::video_packet& packet) -> emscripten::val
+      {
+        return emscripten::val(emscripten::typed_memory_view(
+          packet.getPacketSize(), reinterpret_cast<const uint8_t*>(packet.getPacketData())));
+      },
+      emscripten::allow_raw_pointers())
+    .function("getTimestamp", &f3d::video_packet::getTimestamp)
+    .function("isKeyFrame", &f3d::video_packet::isKeyFrame);
+
+  // f3d::video_encoder
+  emscripten::enum_<f3d::video_encoder::codec>("VideoEncoderCodec")
+    .value("H264_AUTO", f3d::video_encoder::codec::H264_AUTO)
+    .value("H264_NVENC", f3d::video_encoder::codec::H264_NVENC)
+    .value("H264_VIDEOTOOLBOX", f3d::video_encoder::codec::H264_VIDEOTOOLBOX)
+    .value("H264_CPU", f3d::video_encoder::codec::H264_CPU);
+
+  emscripten::enum_<f3d::video_encoder::compression>("VideoEncoderCompression")
+    .value("FAST", f3d::video_encoder::compression::FAST)
+    .value("BALANCED", f3d::video_encoder::compression::BALANCED)
+    .value("HIGH", f3d::video_encoder::compression::HIGH);
+
+  emscripten::value_object<f3d::video_encoder::params>("VideoEncoderParams")
+    .field("codec", &f3d::video_encoder::params::Codec)
+    .field("width", &f3d::video_encoder::params::Width)
+    .field("height", &f3d::video_encoder::params::Height)
+    .field("frameRate", &f3d::video_encoder::params::FrameRate)
+    .field("compression", &f3d::video_encoder::params::Compression)
+    .field("lowLatency", &f3d::video_encoder::params::LowLatency);
+
+  emscripten::class_<f3d::video_encoder>("VideoEncoder")
+    .constructor<const f3d::video_encoder::params&>()
+    .property("width", &f3d::video_encoder::getWidth)
+    .property("height", &f3d::video_encoder::getHeight)
+    .function(
+      "listen",
+      +[](f3d::video_encoder& encoder, const emscripten::val& callback) -> f3d::video_encoder&
+      { return encoder.listen([=](const f3d::video_packet& packet) { callback(packet); }); },
+      emscripten::return_value_policy::reference())
+    .function("submit", &f3d::video_encoder::submit)
+    .function("flush", &f3d::video_encoder::flush, emscripten::return_value_policy::reference());
 
   // f3d::interactor
   emscripten::enum_<f3d::interactor::AnimationDirection>("InteractorAnimationDirection")

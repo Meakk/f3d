@@ -12,6 +12,15 @@ set_tests_properties(f3d::TestInvalidCLIArgs PROPERTIES PASS_REGULAR_EXPRESSION 
 add_test(NAME f3d::TestNoCliInvalidPlugin COMMAND $<TARGET_FILE:f3d> --load-plugins=invalid --no-render)
 set_tests_properties(f3d::TestNoCliInvalidPlugin PROPERTIES PASS_REGULAR_EXPRESSION "Cannot open the library")
 
+# Test --output-video
+if (F3D_MODULE_FFMPEG)
+  add_test(NAME f3d::TestOutputVideo COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.glb --output-video=${CMAKE_BINARY_DIR}/Testing/Temporary/TestOutputVideo.h264)
+  set_tests_properties(f3d::TestOutputVideo PROPERTIES PASS_REGULAR_EXPRESSION "Using video encoder")
+
+  add_test(NAME f3d::TestOutputVideoFailOpen COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.glb --output-video=..)
+  set_tests_properties(f3d::TestOutputVideoFailOpen PROPERTIES PASS_REGULAR_EXPRESSION "Could not open output video file")
+endif()
+
 # Exercise the app-side relative-path branch of AugmentStatefileContent: a file group whose file lives
 # in the statefile directory has its path stored relative to it. The file is copied next to the
 # statefile so the relative branch is taken. This only asserts that saving succeeds; the produced path
@@ -81,11 +90,11 @@ endif ()
 if (UNIX AND NOT APPLE)
   add_test(NAME f3d::TestEGLLoadFailure COMMAND $<TARGET_FILE:f3d> --output=${CMAKE_BINARY_DIR}/Testing/Temporary/egl.png --rendering-backend=egl --verbose)
   set_tests_properties(f3d::TestEGLLoadFailure PROPERTIES PASS_REGULAR_EXPRESSION "Cannot find EGL library")
-  set_tests_properties(f3d::TestEGLLoadFailure PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${F3D_SOURCE_DIR}/testing/data")
+  set_tests_properties(f3d::TestEGLLoadFailure PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${F3D_SOURCE_DIR}/testing/data:$ENV{LD_LIBRARY_PATH}")
 
   add_test(NAME f3d::TestOSMesaLoadFailure COMMAND $<TARGET_FILE:f3d> --output=${CMAKE_BINARY_DIR}/Testing/Temporary/osmesa.png --rendering-backend=osmesa --verbose)
   set_tests_properties(f3d::TestOSMesaLoadFailure PROPERTIES PASS_REGULAR_EXPRESSION "Cannot find OSMesa library")
-  set_tests_properties(f3d::TestOSMesaLoadFailure PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${F3D_SOURCE_DIR}/testing/data")
+  set_tests_properties(f3d::TestOSMesaLoadFailure PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${F3D_SOURCE_DIR}/testing/data:$ENV{LD_LIBRARY_PATH}")
 
   if(F3D_TESTING_ENABLE_RENDERING_TESTS)
     set(_geometry_cache "${CMAKE_BINARY_DIR}/Testing/Temporary/window_geometry_cache")

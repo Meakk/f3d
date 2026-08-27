@@ -25,6 +25,11 @@
           "valueHelper": "<png file>"
         },
         {
+          "longName": "output-video",
+          "helpText": "Render to video",
+          "valueHelper": "<h264 file>"
+        },
+        {
           "longName": "no-background",
           "helpText": "No background when render to file",
           "valueHelper": "<bool>",

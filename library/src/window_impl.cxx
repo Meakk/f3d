@@ -837,6 +837,19 @@ image window_impl::renderToImage(bool noBackground)
 }
 
 //----------------------------------------------------------------------------
+video_frame window_impl::getVideoFrame()
+{
+  video_frame frame(this->getWidth(), this->getHeight());
+
+  if (!this->Internals->Renderer->CaptureVideoFrame(frame.getYPlane(), frame.getUVPlane()))
+  {
+    throw video_frame::invalid_frame_exception("Failed to capture video frame");
+  }
+
+  return frame;
+}
+
+//----------------------------------------------------------------------------
 void window_impl::SetImporter(vtkF3DMetaImporter* importer)
 {
   this->Internals->Renderer->SetImporter(importer);
