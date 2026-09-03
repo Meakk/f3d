@@ -19,6 +19,8 @@ public:
   ///@{ @name Constructors
   /**
    * Default/copy/move constructors/operators.
+   * The constructor can throw a video_frame::invalid_frame_exception if the resolution
+   * is not even or positive, or if F3D_MODULE_FFMPEG is not enabled.
    */
   video_frame(int width, int height);
   ~video_frame();

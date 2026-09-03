@@ -90,6 +90,9 @@ public:
    * This construct the video frame, allocates and fills the Y and UV planes with the current window
    * content in the expected layout.
    * Requires F3D_MODULE_FFMPEG to be enabled.
+   * Throws a video_frame::invalid_frame_exception if F3D_MODULE_FFMPEG is disabled or
+   * if the resolution is not even or positive.
+   * Returns the resulting f3d::video_frame.
    */
   [[nodiscard]] virtual video_frame getVideoFrame() = 0;
 
