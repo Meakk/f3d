@@ -17,8 +17,17 @@ if (F3D_MODULE_FFMPEG)
   add_test(NAME f3d::TestOutputVideo COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.glb --output-video=${CMAKE_BINARY_DIR}/Testing/Temporary/TestOutputVideo.h264)
   set_tests_properties(f3d::TestOutputVideo PROPERTIES PASS_REGULAR_EXPRESSION "Using video encoder")
 
+  add_test(NAME f3d::TestOutputVideoNoAnim COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.vtp --output-video=${CMAKE_BINARY_DIR}/Testing/Temporary/TestOutputVideoNoAnim.h264)
+  set_tests_properties(f3d::TestOutputVideoNoAnim PROPERTIES PASS_REGULAR_EXPRESSION "No animation available or animation has zero duration, outputting single")
+
+  add_test(NAME f3d::TestOutputVideoMulti COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.glb ${F3D_SOURCE_DIR}/testing/data/f3d.vtp --output-video=${CMAKE_BINARY_DIR}/Testing/Temporary/TestOutputVideoMulti.h264)
+  set_tests_properties(f3d::TestOutputVideoMulti PROPERTIES PASS_REGULAR_EXPRESSION "An output video was saved using a single 3D file")
+
   add_test(NAME f3d::TestOutputVideoFailOpen COMMAND $<TARGET_FILE:f3d> ${F3D_SOURCE_DIR}/testing/data/f3d.glb --output-video=..)
   set_tests_properties(f3d::TestOutputVideoFailOpen PROPERTIES PASS_REGULAR_EXPRESSION "Could not open output video file")
+
+  add_test(NAME f3d::TestOutputVideoFailNoInput COMMAND $<TARGET_FILE:f3d> --output-video=${CMAKE_BINARY_DIR}/Testing/Temporary/TestOutputVideoFailNoInput.h264)
+  set_tests_properties(f3d::TestOutputVideoFailNoInput PROPERTIES PASS_REGULAR_EXPRESSION "No files loaded, no rendering performed")
 endif()
 
 # Exercise the app-side relative-path branch of AugmentStatefileContent: a file group whose file lives

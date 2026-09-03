@@ -267,9 +267,13 @@ video_encoder_ffmpeg& video_encoder_ffmpeg::listen(
         }
         else
         {
+          // This can fail for various reasons, including memory allocation failure.
+          // It's not possible to cover it in the CI, so we exclude it from coverage.
+          // LCOV_EXCL_START
           char errBuf[AV_ERROR_MAX_STRING_SIZE];
           av_strerror(ret, errBuf, sizeof(errBuf));
           throw transport_exception(std::string("Error receiving packet: ") + errBuf);
+          // LCOV_EXCL_STOP
         }
       }
     });

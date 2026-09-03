@@ -153,11 +153,7 @@ void vtkF3DFrameCapture::RenderYUV(vtkOpenGLRenderer* ren)
 //----------------------------------------------------------------------------
 void vtkF3DFrameCapture::Capture(vtkOpenGLRenderer* ren, std::byte* y, std::byte* uv)
 {
-  if (!this->InputTexture)
-  {
-    vtkErrorMacro("InputTexture is not set");
-    return;
-  }
+  assert(this->InputTexture != nullptr);
 
   // Check if the input texture size has changed, and release resources if so
   if (this->Pimpl->FboY != nullptr &&

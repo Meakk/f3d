@@ -2017,7 +2017,10 @@ int F3DStarter::Start(int argc, char** argv)
         {
           // If submit returns false, it's not an error, it means the encoder is not ready
           // to accept a new frame yet, so we wait a bit
+          // It's not deterministic so we cannot cover it in the CI
+          // LCOV_EXCL_START
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          // LCOV_EXCL_STOP
         }
       }
 
