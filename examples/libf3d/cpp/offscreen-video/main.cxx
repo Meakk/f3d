@@ -111,10 +111,13 @@ int main(int argc, char** argv)
 
     constexpr double framerate = 30;
 
-    auto encoder = f3d::video_encoder::create({ .Codec = f3d::video_encoder::codec::H264_AUTO,
-      .Width = width,
-      .Height = height,
-      .FrameRate = framerate });
+    f3d::video_encoder::params params;
+    params.Codec = f3d::video_encoder::codec::H264_AUTO;
+    params.Width = width;
+    params.Height = height;
+    params.FrameRate = framerate;
+
+    auto encoder = f3d::video_encoder::create(params);
 
     encoder->listen(
       [](const std::shared_ptr<f3d::video_packet>& packet)
