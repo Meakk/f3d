@@ -1954,7 +1954,7 @@ int F3DStarter::Start(int argc, char** argv)
         return EXIT_FAILURE;
       }
 
-      f3d::video_encoder encoder({
+      auto encoder = f3d::video_encoder::create({
         .Width = window.getWidth(),
         .Height = window.getHeight(),
         .FrameRate = this->Internals->AppOptions.FrameRate,
@@ -1974,12 +1974,12 @@ int F3DStarter::Start(int argc, char** argv)
         }
       }
 
-      encoder.listen(
-        [&](const f3d::video_packet& packet)
+      encoder->listen(
+        [&](const std::shared_ptr<f3d::video_packet>& packet)
         {
           stream.write(
-            reinterpret_cast<const char*>(packet.getPacketData()), packet.getPacketSize());
-          f3d::log::debug("Video packet received, size: ", packet.getPacketSize());
+            reinterpret_cast<const char*>(packet->getPacketData()), packet->getPacketSize());
+          f3d::log::debug("Video packet received, size: ", packet->getPacketSize());
         });
 
       f3d::scene& animScene = this->Internals->Engine->getScene();
@@ -2010,10 +2010,10 @@ int F3DStarter::Start(int argc, char** argv)
 
         window.render();
 
-        f3d::video_frame videoFrame = window.getVideoFrame();
-        videoFrame.setTimestamp(frame);
+        auto videoFrame = window.getVideoFrame();
+        videoFrame->setTimestamp(frame);
 
-        while (!encoder.submit(videoFrame))
+        while (!encoder->submit(videoFrame))
         {
           // If submit returns false, it's not an error, it means the encoder is not ready
           // to accept a new frame yet, so we wait a bit
@@ -2021,7 +2021,7 @@ int F3DStarter::Start(int argc, char** argv)
         }
       }
 
-      encoder.flush();
+      encoder->flush();
 
       f3d::log::info("Saved ", count, " animation frame(s)");
 

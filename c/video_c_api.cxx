@@ -1,6 +1,26 @@
 #include "video_c_api.h"
 #include "log.h"
 #include "video_encoder.h"
+#include "window.h"
+#include "window_c_api.h"
+
+template<typename T>
+struct SmartPointerWrapper
+{
+  std::shared_ptr<T> impl;
+
+  SmartPointerWrapper(std::shared_ptr<T> ptr)
+    : impl(std::move(ptr))
+  {
+  }
+};
+
+struct f3d_video_encoder_t : public SmartPointerWrapper<f3d::video_encoder>
+{
+};
+struct f3d_video_frame_t : public SmartPointerWrapper<f3d::video_frame>
+{
+};
 
 //----------------------------------------------------------------------------
 void f3d_video_frame_delete(f3d_video_frame_t* frame)
@@ -11,7 +31,7 @@ void f3d_video_frame_delete(f3d_video_frame_t* frame)
     return;
   }
 
-  delete reinterpret_cast<f3d::video_frame*>(frame);
+  delete reinterpret_cast<f3d_video_frame_t*>(frame);
 }
 
 //----------------------------------------------------------------------------
@@ -22,8 +42,8 @@ void f3d_video_frame_set_timestamp(f3d_video_frame_t* frame, int64_t timestamp)
     return;
   }
 
-  f3d::video_frame* cpp_frame = reinterpret_cast<f3d::video_frame*>(frame);
-  cpp_frame->setTimestamp(timestamp);
+  f3d_video_frame_t* cpp_frame = reinterpret_cast<f3d_video_frame_t*>(frame);
+  cpp_frame->impl->setTimestamp(timestamp);
 }
 
 //----------------------------------------------------------------------------
@@ -93,8 +113,7 @@ f3d_video_encoder_t* f3d_video_encoder_new(const f3d_video_encoder_params_t* par
     cppParams.Compression = static_cast<f3d::video_encoder::compression>(params->compression);
     cppParams.LowLatency = params->low_latency != 0;
 
-    f3d::video_encoder* encoder = new f3d::video_encoder(cppParams);
-    return reinterpret_cast<f3d_video_encoder_t*>(encoder);
+    return new f3d_video_encoder_t(f3d::video_encoder::create(cppParams));
   }
   catch (const f3d::video_encoder::codec_exception& e)
   {
@@ -112,7 +131,7 @@ void f3d_video_encoder_delete(f3d_video_encoder_t* encoder)
     return;
   }
 
-  delete reinterpret_cast<f3d::video_encoder*>(encoder);
+  delete reinterpret_cast<f3d_video_encoder_t*>(encoder);
 }
 
 //----------------------------------------------------------------------------
@@ -123,7 +142,7 @@ int f3d_video_encoder_get_width(const f3d_video_encoder_t* encoder)
     return 0;
   }
 
-  return reinterpret_cast<const f3d::video_encoder*>(encoder)->getWidth();
+  return reinterpret_cast<const f3d_video_encoder_t*>(encoder)->impl->getWidth();
 }
 
 //----------------------------------------------------------------------------
@@ -134,7 +153,7 @@ int f3d_video_encoder_get_height(const f3d_video_encoder_t* encoder)
     return 0;
   }
 
-  return reinterpret_cast<const f3d::video_encoder*>(encoder)->getHeight();
+  return reinterpret_cast<const f3d_video_encoder_t*>(encoder)->impl->getHeight();
 }
 
 //----------------------------------------------------------------------------
@@ -146,9 +165,9 @@ void f3d_video_encoder_listen(
     return;
   }
 
-  f3d::video_encoder* cpp_encoder = reinterpret_cast<f3d::video_encoder*>(encoder);
-  cpp_encoder->listen([=](const f3d::video_packet& packet)
-    { callback(reinterpret_cast<const f3d_video_packet_t*>(&packet), user_data); });
+  f3d_video_encoder_t* cpp_encoder = reinterpret_cast<f3d_video_encoder_t*>(encoder);
+  cpp_encoder->impl->listen([=](const std::shared_ptr<f3d::video_packet>& packet)
+    { callback(reinterpret_cast<const f3d_video_packet_t*>(packet.get()), user_data); });
 }
 
 //----------------------------------------------------------------------------
@@ -159,12 +178,12 @@ int f3d_video_encoder_submit(f3d_video_encoder_t* encoder, f3d_video_frame_t* fr
     return 0;
   }
 
-  f3d::video_encoder* cpp_encoder = reinterpret_cast<f3d::video_encoder*>(encoder);
-  f3d::video_frame* cpp_frame = reinterpret_cast<f3d::video_frame*>(frame);
+  f3d_video_encoder_t* cpp_encoder = reinterpret_cast<f3d_video_encoder_t*>(encoder);
+  f3d_video_frame_t* cpp_frame = reinterpret_cast<f3d_video_frame_t*>(frame);
 
   try
   {
-    return cpp_encoder->submit(*cpp_frame) ? 1 : 0;
+    return cpp_encoder->impl->submit(cpp_frame->impl) ? 1 : 0;
   }
   catch (const f3d::video_encoder::transport_exception& e)
   {
@@ -181,5 +200,17 @@ void f3d_video_encoder_flush(f3d_video_encoder_t* encoder)
     return;
   }
 
-  reinterpret_cast<f3d::video_encoder*>(encoder)->flush();
+  reinterpret_cast<f3d_video_encoder_t*>(encoder)->impl->flush();
+}
+
+//----------------------------------------------------------------------------
+f3d_video_frame_t* f3d_window_get_video_frame(f3d_window_t* window)
+{
+  if (!window)
+  {
+    return nullptr;
+  }
+
+  f3d::window* cpp_window = reinterpret_cast<f3d::window*>(window);
+  return new f3d_video_frame_t(cpp_window->getVideoFrame());
 }

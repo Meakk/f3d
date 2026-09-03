@@ -439,12 +439,13 @@ EMSCRIPTEN_BINDINGS(f3d)
 
   // f3d::video_frame
   emscripten::class_<f3d::video_frame>("VideoFrame")
-    .constructor<int, int>()
+    .smart_ptr<std::shared_ptr<f3d::video_frame>>("VideoFrame")
     .function("setTimestamp", &f3d::video_frame::setTimestamp,
       emscripten::return_value_policy::reference());
 
   // f3d::video_packet
   emscripten::class_<f3d::video_packet>("VideoPacket")
+    .smart_ptr<std::shared_ptr<f3d::video_packet>>("VideoPacket")
     .function(
       "getPacketData",
       +[](const f3d::video_packet& packet) -> emscripten::val
@@ -477,13 +478,19 @@ EMSCRIPTEN_BINDINGS(f3d)
     .field("lowLatency", &f3d::video_encoder::params::LowLatency);
 
   emscripten::class_<f3d::video_encoder>("VideoEncoder")
-    .constructor<const f3d::video_encoder::params&>()
+    .smart_ptr<std::shared_ptr<f3d::video_encoder>>("VideoEncoder")
     .property("width", &f3d::video_encoder::getWidth)
     .property("height", &f3d::video_encoder::getHeight)
+    .class_function(
+      "create", +[](const f3d::video_encoder::params& params) -> std::shared_ptr<f3d::video_encoder>
+      { return f3d::video_encoder::create(params); })
     .function(
       "listen",
       +[](f3d::video_encoder& encoder, const emscripten::val& callback) -> f3d::video_encoder&
-      { return encoder.listen([=](const f3d::video_packet& packet) { callback(packet); }); },
+      {
+        return encoder.listen(
+          [=](const std::shared_ptr<f3d::video_packet>& packet) { callback(packet); });
+      },
       emscripten::return_value_policy::reference())
     .function("submit", &f3d::video_encoder::submit)
     .function("flush", &f3d::video_encoder::flush, emscripten::return_value_policy::reference());

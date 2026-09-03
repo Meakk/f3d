@@ -94,7 +94,7 @@ public:
    * if the resolution is not even or positive.
    * Returns the resulting f3d::video_frame.
    */
-  [[nodiscard]] virtual video_frame getVideoFrame() = 0;
+  [[nodiscard]] virtual std::shared_ptr<video_frame> getVideoFrame() = 0;
 
   /**
    * Set the size of the window.

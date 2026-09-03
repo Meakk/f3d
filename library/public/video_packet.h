@@ -17,48 +17,27 @@ namespace f3d
 class F3D_EXPORT video_packet
 {
 public:
-  ///@{ @name Constructors
-  /**
-   * Default/copy/move constructors/operators.
-   */
-  video_packet();
-  ~video_packet();
-  video_packet(const video_packet& packet);
-  video_packet& operator=(const video_packet& packet);
-  video_packet(video_packet&& packet) noexcept;
-  video_packet& operator=(video_packet&& packet) noexcept;
-  ///@}
+  virtual ~video_packet() = default;
 
   /**
    * Get the size of the video packet in bytes.
    */
-  size_t getPacketSize() const;
+  virtual size_t getPacketSize() const = 0;
 
   /**
    * Get the data of the video packet.
    */
-  std::byte* getPacketData() const;
+  virtual std::byte* getPacketData() const = 0;
 
   /**
    * Get the timestamp of the video packet.
    */
-  int64_t getTimestamp() const;
+  virtual int64_t getTimestamp() const = 0;
 
   /**
    * Returns true if the packet is a key frame, false otherwise.
    */
-  bool isKeyFrame() const;
-
-  /**
-   * Get the handle of the video packet.
-   * The handle is an opaque pointer to the underlying video packet data structure.
-   * It's used internally by the video_encoder class and should not be used directly.
-   */
-  const void* getHandle() const;
-
-private:
-  class internals;
-  internals* Internals;
+  virtual bool isKeyFrame() const = 0;
 };
 }
 

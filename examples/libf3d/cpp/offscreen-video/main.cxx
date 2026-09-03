@@ -109,15 +109,15 @@ int main(int argc, char** argv)
     f3d::window& win = eng.getWindow();
     win.setSize(width, height);
 
-    constexpr int framerate = 30; // 30 fps
+    constexpr double framerate = 30;
 
-    f3d::video_encoder encoder({ .Codec = f3d::video_encoder::codec::H264_AUTO,
+    auto encoder = f3d::video_encoder::create({ .Codec = f3d::video_encoder::codec::H264_AUTO,
       .Width = width,
       .Height = height,
-      .FrameRateNumerator = framerate });
+      .FrameRate = framerate });
 
-    encoder.listen(
-      [](const f3d::video_packet& packet)
+    encoder->listen(
+      [](const std::shared_ptr<f3d::video_packet>& packet)
       {
         // write packets to stdout
         // it can be piped to ffmpeg for example to create a video file
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
         // ./offscreen-video model.glb 512 512 | ffmpeg -f h264 -i - output.mp4
         // ./offscreen-video model.glb 512 512 | ffplay -f h264 -
         std::cout.write(
-          reinterpret_cast<const char*>(packet.getPacketData()), packet.getPacketSize());
+          reinterpret_cast<const char*>(packet->getPacketData()), packet->getPacketSize());
       });
 
     auto [startTime, endTime] = eng.getScene().animationTimeRange();
@@ -140,10 +140,10 @@ int main(int argc, char** argv)
       win.render();
 
       // submit the video frame to the encoder
-      f3d::video_frame frame = win.getVideoFrame();
-      frame.setTimestamp(frameIndex);
+      auto frame = win.getVideoFrame();
+      frame->setTimestamp(frameIndex);
 
-      while (!encoder.submit(frame))
+      while (!encoder->submit(frame))
       {
         // wait for the encoder to be ready to accept new frames
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -151,7 +151,7 @@ int main(int argc, char** argv)
     }
 
     // flush the encoder to ensure all frames are processed and packets are sent
-    encoder.flush();
+    encoder->flush();
 
     return EXIT_SUCCESS;
   }

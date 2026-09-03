@@ -9,7 +9,7 @@ def test_video_api():
     params.width = engine.window.size[0]
     params.height = engine.window.size[1]
     params.frame_rate = 30
-    encoder = f3d.VideoEncoder(params)
+    encoder = f3d.VideoEncoder.create(params)
     assert isinstance(encoder, f3d.VideoEncoder)
     assert encoder.width == engine.window.size[0]
     assert encoder.height == engine.window.size[1]

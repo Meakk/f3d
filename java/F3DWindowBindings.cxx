@@ -72,19 +72,6 @@ extern "C"
     return result;
   }
 
-  JNIEXPORT jobject JAVA_BIND(Window, getVideoFrame)(JNIEnv* env, jobject self)
-  {
-    f3d::window& win = GetEngine(env, self)->getWindow();
-    f3d::video_frame* frame = new f3d::video_frame(win.getVideoFrame());
-
-    JniLocalRef<jclass> frameClass(env, env->FindClass("app/f3d/F3D/VideoFrame"));
-    jmethodID constructor = env->GetMethodID(frameClass, "<init>", "(J)V");
-
-    jobject result = env->NewObject(frameClass, constructor, reinterpret_cast<jlong>(frame));
-
-    return result;
-  }
-
   JNIEXPORT jobject JAVA_BIND(Window, setSize)(JNIEnv* env, jobject self, jint width, jint height)
   {
     GetEngine(env, self)->getWindow().setSize(width, height);

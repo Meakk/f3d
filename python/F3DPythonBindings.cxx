@@ -225,13 +225,13 @@ PYBIND11_MODULE(pyf3d, module)
     .def("normalized_pixel", &f3d::image::getNormalizedPixel);
 
   // f3d::video_frame
-  py::class_<f3d::video_frame> video_frame(module, "VideoFrame");
-  video_frame.def(py::init<int, int>(), py::arg("width"), py::arg("height"))
-    .def("set_timestamp", &f3d::video_frame::setTimestamp, py::arg("timestamp"));
+  py::class_<f3d::video_frame, std::shared_ptr<f3d::video_frame>> video_frame(module, "VideoFrame");
+  video_frame.def("set_timestamp", &f3d::video_frame::setTimestamp, py::arg("timestamp"));
 
   // f3d::video_packet
-  py::class_<f3d::video_packet> video_packet(module, "VideoPacket");
-  video_packet.def(py::init<>())
+  py::class_<f3d::video_packet, std::shared_ptr<f3d::video_packet>> video_packet(
+    module, "VideoPacket");
+  video_packet
     .def("get_packet_data",
       [](const f3d::video_packet& packet) -> py::bytes
       {
@@ -268,8 +268,9 @@ PYBIND11_MODULE(pyf3d, module)
     .def_readwrite("compression", &f3d::video_encoder::params::Compression)
     .def_readwrite("low_latency", &f3d::video_encoder::params::LowLatency);
 
-  py::class_<f3d::video_encoder> video_encoder(module, "VideoEncoder");
-  video_encoder.def(py::init<const f3d::video_encoder::params&>(), py::arg("params"))
+  py::class_<f3d::video_encoder, std::shared_ptr<f3d::video_encoder>> video_encoder(
+    module, "VideoEncoder");
+  video_encoder.def_static("create", &f3d::video_encoder::create, py::arg("params"))
     .def_property_readonly("width", &f3d::video_encoder::getWidth)
     .def_property_readonly("height", &f3d::video_encoder::getHeight)
     .def("listen", &f3d::video_encoder::listen, py::arg("callback"))

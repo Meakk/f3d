@@ -8,6 +8,7 @@
 
 /// @cond
 #include <functional>
+#include <memory>
 /// @endcond
 
 namespace f3d
@@ -22,6 +23,8 @@ namespace f3d
 class F3D_EXPORT video_encoder
 {
 public:
+  virtual ~video_encoder() = default;
+
   /**
    * Enumeration of codec types.
    * It's recommended to use H264_AUTO for automatic selection of the best available codec.
@@ -59,23 +62,18 @@ public:
     bool LowLatency = false;
   };
 
-  ///@{ @name Constructors
   /**
-   * Default/copy/move constructors/operators.
-   * The constructor throws a codec_exception if the codec cannot be initialized.
+   * Create a video encoder instance.
+   * Throws codec_exception if the codec cannot be initialized.
    */
-  explicit video_encoder(const params& p);
-  ~video_encoder();
-  video_encoder(const video_encoder& stream) = delete;
-  video_encoder& operator=(const video_encoder& stream) = delete;
-  ///@}
+  [[nodiscard]] static std::shared_ptr<video_encoder> create(const params& p);
 
   ///@{
   /**
    * Get the width and height of the video stream.
    */
-  int getWidth() const;
-  int getHeight() const;
+  [[nodiscard]] virtual int getWidth() const = 0;
+  [[nodiscard]] virtual int getHeight() const = 0;
   ///@}
 
   /**
@@ -83,7 +81,8 @@ public:
    * packet. Thread safety is ensured, allowing concurrent calls to submit and listen.
    * Throws transport_exception if there is an error receiving packets from the encoder.
    */
-  video_encoder& listen(std::function<void(const video_packet&)> callback);
+  virtual video_encoder& listen(
+    std::function<void(const std::shared_ptr<video_packet>&)> callback) = 0;
 
   /**
    * Send a frame to the video stream for encoding.
@@ -92,13 +91,13 @@ public:
    * and listen. Throws transport_exception if there is an error submitting the frame to the
    * encoder.
    */
-  bool submit(const video_frame& frame);
+  virtual bool submit(const std::shared_ptr<video_frame>& frame) = 0;
 
   /**
    * Flush the video stream, ensuring all encoded frames are processed.
    * Signals the end of the stream to the encoder, allowing it to output any remaining packets.
    */
-  video_encoder& flush();
+  virtual video_encoder& flush() = 0;
 
   /**
    * An exception that can be thrown by the engine
@@ -117,12 +116,6 @@ public:
   {
     explicit transport_exception(const std::string& what = "");
   };
-
-private:
-  class internals;
-  internals* Internals;
-
-  int receive(const video_packet& packet) const;
 };
 }
 

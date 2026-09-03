@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "options.h"
 #include "utils.h"
+#include "video_frame_ffmpeg.h"
 
 #include "F3DStyle.h"
 #include "vtkF3DExternalRenderWindow.h"
@@ -837,16 +838,22 @@ image window_impl::renderToImage(bool noBackground)
 }
 
 //----------------------------------------------------------------------------
-video_frame window_impl::getVideoFrame()
+std::shared_ptr<video_frame> window_impl::getVideoFrame()
 {
-  video_frame frame(this->getWidth(), this->getHeight());
+#ifdef F3D_MODULE_FFMPEG
+  std::shared_ptr<video_frame_ffmpeg> frame =
+    std::make_shared<video_frame_ffmpeg>(this->getWidth(), this->getHeight());
 
-  if (!this->Internals->Renderer->CaptureVideoFrame(frame.getYPlane(), frame.getUVPlane()))
+  if (!this->Internals->Renderer->CaptureVideoFrame(frame->GetYPlane(), frame->GetUVPlane()))
   {
     throw video_frame::invalid_frame_exception("Failed to capture video frame");
   }
 
-  return frame;
+  return std::static_pointer_cast<video_frame>(frame);
+#else
+  throw video_frame::invalid_frame_exception(
+    "Video frame capture is not supported, please build f3d with FFMPEG support");
+#endif
 }
 
 //----------------------------------------------------------------------------
