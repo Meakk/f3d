@@ -149,10 +149,11 @@ fs::path F3DSystemTools::GetUserConfigFileDirectory()
 #else
 #if defined(__unix__)
   // Implementing XDG specifications
-  std::optional<std::string> xdgConfigHome = f3d::utils::getEnv("XDG_CONFIG_HOME");
+  std::optional<std::string> xdgConfigHome = f3d::utils::getEnv("HOME");
   if (xdgConfigHome.has_value() && !xdgConfigHome.value().empty())
   {
     dirPath = fs::path(xdgConfigHome.value());
+    dirPath /= ".config";
   }
   else
 #endif
