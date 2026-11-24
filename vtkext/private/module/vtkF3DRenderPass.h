@@ -3,7 +3,8 @@
  * @brief   Implement the basic render passes.
  *
  * vtkF3DRenderPass implements the render pass chain of F3D.
- * It consists of two main passes. The first one renders the background.
+ * It first runs a depth pre-pass writing the normals and depth of opaque actors.
+ * Then it consists of two main passes. The first one renders the background.
  * The second pass renders the dataset with different options (raytracing, SSAO, depth peeling, ...)
  * Once the two passes are rendered into textures, a final shader is applied to combine the
  * background (and optionally blur it using Bokeh depth of field) and the dataset image.
@@ -26,6 +27,7 @@
 #include <vector>
 
 class vtkActor;
+class vtkF3DDepthPrePass;
 class vtkCamera;
 class vtkInformationIntegerKey;
 class vtkAbstractMapper;
@@ -97,6 +99,7 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
+  vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BackgroundPass;
   vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BakeReflectionPass;
   vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> MainPass;

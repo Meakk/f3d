@@ -1,6 +1,7 @@
 #include "vtkF3DRenderPass.h"
 
 #include "F3DLog.h"
+#include "vtkF3DDepthPrePass.h"
 #include "vtkF3DHexagonalBokehBlurPass.h"
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
@@ -81,6 +82,10 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   if (this->BlendQuadHelper)
   {
     this->BlendQuadHelper->ReleaseGraphicsResources(w);
+  }
+  if (this->DepthPrePass)
+  {
+    this->DepthPrePass->ReleaseGraphicsResources(w);
   }
   if (this->BackgroundPass)
   {
@@ -231,6 +236,9 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   this->LightComplexity = glRenderer->GetLightingComplexity();
 
   this->ReleaseGraphicsResources(glRenderer->GetRenderWindow());
+
+  // depth pre-pass, write normals and depth of opaque actors
+  this->DepthPrePass = vtkSmartPointer<vtkF3DDepthPrePass>::New();
 
   // background pass, setup framebuffer, clear and draw skybox
   const vtkNew<vtkOpaquePass> bgP;
@@ -806,6 +814,17 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
 
   if (!uiOnly)
   {
+    // the depth pre-pass must be the first pass to run, it is not relevant with external renderers
+    if (!this->UseRaytracing && !this->UseAnari)
+    {
+      vtkRenderState depthPrePassState(s->GetRenderer());
+      depthPrePassState.SetPropArrayAndCount(
+        this->MainProps.data(), static_cast<int>(this->MainProps.size()));
+      depthPrePassState.SetFrameBuffer(s->GetFrameBuffer());
+
+      this->DepthPrePass->Render(&depthPrePassState);
+    }
+
     vtkRenderState backgroundState(s->GetRenderer());
     backgroundState.SetPropArrayAndCount(
       this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));

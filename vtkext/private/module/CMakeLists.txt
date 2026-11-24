@@ -78,6 +78,7 @@ set(classes
   vtkF3DCachedLUTTexture
   vtkF3DCachedSpecularTexture
   vtkF3DConsoleOutputWindow
+  vtkF3DDepthPrePass
   vtkF3DExternalRenderWindow
   vtkF3DFrameCapture
   vtkF3DGenericImporter
