@@ -28,6 +28,7 @@
 
 class vtkActor;
 class vtkF3DDepthPrePass;
+class vtkF3DSkinningMorphingPass;
 class vtkCamera;
 class vtkInformationIntegerKey;
 class vtkAbstractMapper;
@@ -60,7 +61,7 @@ public:
   vtkSetMacro(AnariLibrary, std::string);
 
   /**
-   * Modify shader code for matcap/gamma/skinning
+   * Modify shader code for matcap/gamma
    */
   bool PreReplaceShaderValues(std::string& vertexShader, std::string& geometryShader,
     std::string& fragmentShader, vtkAbstractMapper* mapper, vtkProp* prop) override;
@@ -99,6 +100,7 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
+  vtkSmartPointer<vtkF3DSkinningMorphingPass> SkinningMorphingPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BackgroundPass;
   vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BakeReflectionPass;
@@ -109,8 +111,6 @@ protected:
 
   vtkMTimeType InitializeTime = 0;
 
-  int LightComplexity = 0;
-
   std::vector<vtkProp*> BackgroundProps;
   std::vector<vtkProp*> MainOnTopProps;
   std::vector<vtkProp*> MainProps;
@@ -120,7 +120,6 @@ protected:
 
 private:
   void ReplaceMatCapShader(std::string& fragmentShader, vtkActor* actor, vtkPolyData* polyData);
-  void ReplaceSkinningMorphing(std::string& vertexShader, vtkActor* actor, vtkPolyData* polyData);
 };
 
 #endif

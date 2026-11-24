@@ -25,10 +25,10 @@
 #include <vector>
 
 class vtkCameraPass;
-class vtkOpaquePass;
 class vtkOpenGLFramebufferObject;
 class vtkOpenGLRenderWindow;
 class vtkProp;
+class vtkRenderPass;
 class vtkTextureObject;
 
 class vtkF3DDepthPrePass : public vtkOpenGLRenderPass
@@ -41,6 +41,13 @@ public:
   void Render(const vtkRenderState* s) override;
 
   void ReleaseGraphicsResources(vtkWindow* w) override;
+
+  /**
+   * Set the pass rendering the opaque props into the framebuffer, it is wrapped into a camera pass.
+   * It is typically a sequence of passes ending with a vtkOpaquePass.
+   */
+  void SetDelegatePass(vtkRenderPass* delegate);
+  vtkRenderPass* GetDelegatePass() const { return this->DelegatePass; }
 
   /**
    * Get the RG16 texture containing the octahedrally encoded view space normals.
@@ -71,7 +78,7 @@ protected:
   vtkSmartPointer<vtkTextureObject> DepthTexture;
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
 
-  vtkSmartPointer<vtkOpaquePass> OpaquePass;
+  vtkSmartPointer<vtkRenderPass> DelegatePass;
   vtkSmartPointer<vtkCameraPass> CameraPass;
 
   std::vector<vtkProp*> OpaqueProps;

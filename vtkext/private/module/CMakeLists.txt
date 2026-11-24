@@ -97,6 +97,7 @@ set(classes
   vtkF3DPostProcessFilter
   vtkF3DRenderPass
   vtkF3DRenderer
+  vtkF3DSkinningMorphingPass
   vtkF3DSolidBackgroundPass
   vtkF3DStochasticTransparentPass
   vtkF3DUIObserver

@@ -4,7 +4,6 @@
 #include <vtkCameraPass.h>
 #include <vtkMapper.h>
 #include <vtkObjectFactory.h>
-#include <vtkOpaquePass.h>
 #include <vtkOpenGLError.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderWindow.h>
@@ -35,9 +34,7 @@ const char* const OCTAHEDRAL_ENCODE =
 //------------------------------------------------------------------------------
 vtkF3DDepthPrePass::vtkF3DDepthPrePass()
 {
-  this->OpaquePass = vtkSmartPointer<vtkOpaquePass>::New();
   this->CameraPass = vtkSmartPointer<vtkCameraPass>::New();
-  this->CameraPass->SetDelegatePass(this->OpaquePass);
 }
 
 //------------------------------------------------------------------------------
@@ -49,6 +46,17 @@ void vtkF3DDepthPrePass::PrintSelf(ostream& os, vtkIndent indent)
   this->Superclass::PrintSelf(os, indent);
   os << indent << "NormalTexture: " << this->NormalTexture << "\n";
   os << indent << "DepthTexture: " << this->DepthTexture << "\n";
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DDepthPrePass::SetDelegatePass(vtkRenderPass* delegate)
+{
+  if (this->DelegatePass != delegate)
+  {
+    this->DelegatePass = delegate;
+    this->CameraPass->SetDelegatePass(delegate);
+    this->Modified();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -104,6 +112,12 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
   vtkOpenGLClearErrorMacro();
 
   this->NumberOfRenderedProps = 0;
+
+  if (!this->DelegatePass)
+  {
+    vtkWarningMacro(<< " no delegate.");
+    return;
+  }
 
   vtkRenderer* r = s->GetRenderer();
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
