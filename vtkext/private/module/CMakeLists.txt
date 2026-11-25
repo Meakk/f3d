@@ -80,6 +80,7 @@ set(classes
   vtkF3DConsoleOutputWindow
   vtkF3DDepthPrePass
   vtkF3DExternalRenderWindow
+  vtkF3DFixColorSpacePass
   vtkF3DFrameCapture
   vtkF3DGenericImporter
   vtkF3DHexagonalBokehBlurPass
@@ -87,6 +88,7 @@ set(classes
   vtkF3DInteractorStyle
   vtkF3DMainRenderPass
   vtkF3DMemoryMesh
+  vtkF3DModifyShaderRenderPass
   vtkF3DMetaImporter
   vtkF3DNamedColors
   vtkF3DNoRenderWindow

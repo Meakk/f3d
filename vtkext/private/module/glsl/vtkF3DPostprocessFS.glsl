@@ -4,7 +4,7 @@
 
 in vec2 texCoord;
 
-uniform sampler2D texLinearHDR;
+uniform sampler2D texColor;
 uniform sampler2D texDepth;
 uniform sampler2D texNormal;
 
@@ -13,7 +13,12 @@ uniform float time;
 
 vec4 getLinearColor(vec2 uv)
 {
-  vec4 color = texture(texLinearHDR, uv);
+  vec4 color = texture(texColor, uv);
+  if (color.a > 0.0)
+    color.rgb /= color.a;
+
+  // Convert color to linear space if needed
+  //VTK::ColorSpace::Impl
 
   // TODO: FXAA, tone mapping
 

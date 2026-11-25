@@ -79,7 +79,6 @@ protected:
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
 
   vtkSmartPointer<vtkRenderPass> DelegatePass;
-  vtkSmartPointer<vtkCameraPass> CameraPass;
 
   std::vector<vtkProp*> OpaqueProps;
 };

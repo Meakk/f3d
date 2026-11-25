@@ -3,6 +3,7 @@
 #include "F3DLog.h"
 #include "vtkF3DDepthPrePass.h"
 #include "vtkF3DPostprocessRenderPass.h"
+#include "vtkF3DFixColorSpacePass.h"
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
@@ -85,10 +86,6 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   {
     this->PostprocessPass->ReleaseGraphicsResources(w);
   }
-  if (this->SkinningMorphingPass)
-  {
-    this->SkinningMorphingPass->ReleaseGraphicsResources(w);
-  }
   if (this->DepthPrePass)
   {
     this->DepthPrePass->ReleaseGraphicsResources(w);
@@ -113,29 +110,19 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   }
 
   vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(s->GetRenderer());
+  vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(glRenderer);
 
   this->ReleaseGraphicsResources(glRenderer->GetRenderWindow());
-
-  this->PostprocessPass = vtkSmartPointer<vtkF3DPostprocessRenderPass>::New();
 
   // depth pre-pass, write normals and depth of opaque actors
   this->DepthPrePass = vtkSmartPointer<vtkF3DDepthPrePass>::New();
 
-  // the skinning and morphing pass is shared between the depth pre-pass and the main pass
-  this->SkinningMorphingPass = vtkSmartPointer<vtkF3DSkinningMorphingPass>::New();
+  const vtkNew<vtkOpaquePass> depthOpaqueP;
 
-  {
-    const vtkNew<vtkOpaquePass> depthOpaqueP;
+  const vtkNew<vtkF3DSkinningMorphingPass> depthSkinningMorphingP;
+  depthSkinningMorphingP->SetDelegatePass(depthOpaqueP);
 
-    vtkNew<vtkRenderPassCollection> depthCollection;
-    depthCollection->AddItem(this->SkinningMorphingPass);
-    depthCollection->AddItem(depthOpaqueP);
-
-    vtkNew<vtkSequencePass> depthSequence;
-    depthSequence->SetPasses(depthCollection);
-
-    this->DepthPrePass->SetDelegatePass(depthSequence);
-  }
+  this->DepthPrePass->SetDelegatePass(depthSkinningMorphingP);
 
   // main pass
   this->MainPass = vtkSmartPointer<vtkF3DMainRenderPass>::New();
@@ -168,9 +155,8 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     const vtkNew<vtkTranslucentPass> translucentP;
     const vtkNew<vtkVolumetricPass> volumeP;
 
+    // the props rendering passes, wrapped below in the passes modifying their shaders
     vtkNew<vtkRenderPassCollection> collection;
-    collection->AddItem(lightsP);
-    collection->AddItem(this->SkinningMorphingPass);
 
     // opaque passes
     if (this->UseSSAOPass)
@@ -200,7 +186,6 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     }
 
     // translucent and volumic
-    const vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(glRenderer);
     if (renderer && renderer->GetBlendingMode() == vtkF3DRenderer::BlendingMode::DUAL_DEPTH_PEELING)
     {
 #ifdef F3D_USE_GLES
@@ -228,8 +213,28 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
       collection->AddItem(volumeP);
     }
 
+    vtkNew<vtkSequencePass> propsSequence;
+    propsSequence->SetPasses(collection);
+
+    const vtkNew<vtkF3DSkinningMorphingPass> skinningMorphingP;
+
+    if (renderer && !renderer->GetSRGBBlending())
+    {
+      const vtkNew<vtkF3DFixColorSpacePass> fixColorSpaceP;
+      fixColorSpaceP->SetDelegatePass(propsSequence);
+      skinningMorphingP->SetDelegatePass(fixColorSpaceP);
+    }
+    else
+    {
+      skinningMorphingP->SetDelegatePass(propsSequence);
+    }
+
+    vtkNew<vtkRenderPassCollection> mainCollection;
+    mainCollection->AddItem(lightsP);
+    mainCollection->AddItem(skinningMorphingP);
+
     vtkNew<vtkSequencePass> sequence;
-    sequence->SetPasses(collection);
+    sequence->SetPasses(mainCollection);
 
     vtkSmartPointer<vtkRenderPass> mainSequencePass = sequence;
 
@@ -303,6 +308,10 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
       }
     }
   }
+
+  // post-process pass
+  this->PostprocessPass = vtkSmartPointer<vtkF3DPostprocessRenderPass>::New();
+  this->PostprocessPass->SetColorInputIsLinear(!renderer || !renderer->GetSRGBBlending());
 
   this->InitializeTime = this->GetMTime();
 }
@@ -440,7 +449,7 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
     this->MainPass->Render(s);
   }
 
-  // restore background color before compositing the layers
+  // restore background color before the postprocess pass
   r->SetBackground(bgColor);
 
   this->PostprocessPass->SetColorTexture(this->MainPass->GetColorTexture());

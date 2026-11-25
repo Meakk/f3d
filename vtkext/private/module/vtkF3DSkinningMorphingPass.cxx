@@ -77,8 +77,6 @@ void vtkF3DSkinningMorphingPass::MapAttributes(vtkPolyDataMapper* polyMapper, vt
 // ----------------------------------------------------------------------------
 void vtkF3DSkinningMorphingPass::Render(const vtkRenderState* s)
 {
-  this->NumberOfRenderedProps = 0;
-
   vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(s->GetRenderer());
   this->LightComplexity = glRenderer ? glRenderer->GetLightingComplexity() : 0;
 
@@ -96,42 +94,7 @@ void vtkF3DSkinningMorphingPass::Render(const vtkRenderState* s)
     }
   }
 
-  this->PreRender(s);
-}
-
-// ----------------------------------------------------------------------------
-void vtkF3DSkinningMorphingPass::PreRenderProp(vtkProp* prop)
-{
-  vtkInformation* info = prop->GetPropertyKeys();
-  if (info && info->Has(vtkOpenGLRenderPass::RenderPasses()))
-  {
-    const int numRenderPasses = info->Length(vtkOpenGLRenderPass::RenderPasses());
-    for (int i = 0; i < numRenderPasses; ++i)
-    {
-      if (info->Get(vtkOpenGLRenderPass::RenderPasses(), i) == this)
-      {
-        return;
-      }
-    }
-  }
-
-  this->Superclass::PreRenderProp(prop);
-  this->RegisteredProps.emplace_back(prop);
-}
-
-// ----------------------------------------------------------------------------
-void vtkF3DSkinningMorphingPass::ReleaseGraphicsResources(vtkWindow* w)
-{
-  this->Superclass::ReleaseGraphicsResources(w);
-
-  for (const vtkWeakPointer<vtkProp>& prop : this->RegisteredProps)
-  {
-    if (prop)
-    {
-      this->PostRenderProp(prop);
-    }
-  }
-  this->RegisteredProps.clear();
+  this->Superclass::Render(s);
 }
 
 // ----------------------------------------------------------------------------

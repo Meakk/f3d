@@ -32,10 +32,7 @@ const char* const OCTAHEDRAL_ENCODE =
 }
 
 //------------------------------------------------------------------------------
-vtkF3DDepthPrePass::vtkF3DDepthPrePass()
-{
-  this->CameraPass = vtkSmartPointer<vtkCameraPass>::New();
-}
+vtkF3DDepthPrePass::vtkF3DDepthPrePass() = default;
 
 //------------------------------------------------------------------------------
 vtkF3DDepthPrePass::~vtkF3DDepthPrePass() = default;
@@ -54,7 +51,6 @@ void vtkF3DDepthPrePass::SetDelegatePass(vtkRenderPass* delegate)
   if (this->DelegatePass != delegate)
   {
     this->DelegatePass = delegate;
-    this->CameraPass->SetDelegatePass(delegate);
     this->Modified();
   }
 }
@@ -189,10 +185,10 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
 
     // register this pass on the props so PostReplaceShaderValues is called for them
     this->PreRender(&s2);
-    this->CameraPass->Render(&s2);
+    this->DelegatePass->Render(&s2);
     this->PostRender(&s2);
 
-    this->NumberOfRenderedProps = this->CameraPass->GetNumberOfRenderedProps();
+    this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();
   }
 
   ostate->PopFramebufferBindings();
@@ -233,10 +229,6 @@ void vtkF3DDepthPrePass::ReleaseGraphicsResources(vtkWindow* w)
 {
   this->Superclass::ReleaseGraphicsResources(w);
 
-  if (this->CameraPass)
-  {
-    this->CameraPass->ReleaseGraphicsResources(w);
-  }
   if (this->FrameBufferObject)
   {
     this->FrameBufferObject->ReleaseGraphicsResources(w);

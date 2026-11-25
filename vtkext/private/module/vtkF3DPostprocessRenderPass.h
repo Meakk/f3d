@@ -32,6 +32,9 @@ public:
 
   void ReleaseGraphicsResources(vtkWindow* w) override;
 
+  vtkSetMacro(ColorInputIsLinear, bool);
+  vtkGetMacro(ColorInputIsLinear, bool);
+
   ///@{
   /**
    * Set/Get the color texture to draw. Nothing is rendered without it.
@@ -67,6 +70,8 @@ protected:
   vtkTextureObject* ColorTexture = nullptr;
   vtkTextureObject* DepthTexture = nullptr;
   vtkTextureObject* NormalTexture = nullptr;
+
+  bool ColorInputIsLinear = true;
 
   std::shared_ptr<vtkOpenGLQuadHelper> QuadHelper;
 };

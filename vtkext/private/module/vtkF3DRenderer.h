@@ -231,6 +231,14 @@ public:
   vtkGetMacro(InvertZoom, bool);
   ///@}
 
+  ///@{
+  /**
+   * Set/Get SRGBBlending
+   */
+  vtkSetMacro(SRGBBlending, bool);
+  vtkGetMacro(SRGBBlending, bool);
+  ///@}
+
   /**
    * Set the interaction style from a string.
    * Accepted values: "default", "trackball", "2d".
@@ -1069,6 +1077,8 @@ private:
 
   bool UseXR = false;
   vtkNew<vtkActor> XRBBoxActor;
+
+  bool SRGBBlending = true;
 };
 
 #endif

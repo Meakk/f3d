@@ -239,6 +239,10 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   this->FrameBufferObject->AddDepthAttachment(this->DepthTexture);
   this->FrameBufferObject->StartNonOrtho(width, height);
 
+  ostate->vtkglEnable(GL_BLEND);
+  ostate->vtkglBlendFuncSeparate(
+    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
   r->Clear();
 
   vtkRenderState s2(s->GetRenderer());

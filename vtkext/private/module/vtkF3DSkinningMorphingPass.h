@@ -5,44 +5,32 @@
  * vtkF3DSkinningMorphingPass maps the glTF skinning and morphing arrays to vertex attributes
  * and modifies the vertex shaders of the actors to apply the skinning and morphing.
  *
- * This pass is meant to be added in a sequence, before the passes rendering the props.
- * Once rendered, it stays registered on the props of the render state, so all the following passes
- * and frames apply the skinning and morphing, until ReleaseGraphicsResources() is called.
- * The same instance can be used in several sequences.
+ * The delegate pass is expected to render the props.
  *
  * @sa
- * vtkOpenGLRenderPass
+ * vtkF3DModifyShaderRenderPass
  */
 
 #ifndef vtkF3DSkinningMorphingPass_h
 #define vtkF3DSkinningMorphingPass_h
 
-#include <vtkOpenGLRenderPass.h>
-#include <vtkSmartPointer.h>
-#include <vtkWeakPointer.h>
-
-#include <vector>
+#include "vtkF3DModifyShaderRenderPass.h"
 
 class vtkActor;
 class vtkPolyData;
 class vtkPolyDataMapper;
 
-class vtkF3DSkinningMorphingPass : public vtkOpenGLRenderPass
+class vtkF3DSkinningMorphingPass : public vtkF3DModifyShaderRenderPass
 {
 public:
   static vtkF3DSkinningMorphingPass* New();
-  vtkTypeMacro(vtkF3DSkinningMorphingPass, vtkOpenGLRenderPass);
+  vtkTypeMacro(vtkF3DSkinningMorphingPass, vtkF3DModifyShaderRenderPass);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
   /**
-   * Map the skinning and morphing arrays of the props and register the pass on them.
+   * Map the skinning and morphing arrays of the props, then render the delegate pass.
    */
   void Render(const vtkRenderState* s) override;
-
-  /**
-   * Unregister the pass from all the props it was registered on.
-   */
-  void ReleaseGraphicsResources(vtkWindow* w) override;
 
   /**
    * Modify the vertex shader to apply skinning and morphing.
@@ -59,16 +47,10 @@ protected:
   vtkF3DSkinningMorphingPass() = default;
   ~vtkF3DSkinningMorphingPass() override = default;
 
-  /**
-   * Register the pass on the prop, only if it is not already registered.
-   */
-  void PreRenderProp(vtkProp* prop) override;
-
 private:
   void MapAttributes(vtkPolyDataMapper* polyMapper, vtkPolyData* input);
   void ReplaceSkinningMorphing(std::string& vertexShader, vtkActor* actor, vtkPolyData* polyData);
 
-  std::vector<vtkWeakPointer<vtkProp>> RegisteredProps;
   int LightComplexity = 0;
 };
 

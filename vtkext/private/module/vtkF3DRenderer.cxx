@@ -585,15 +585,6 @@ void vtkF3DRenderer::ConfigureRenderPasses()
     renderingPass = toneP;
   }
 
-  if (!this->HDRISkyboxVisible)
-  {
-    // if the background is transparent, we need to blend the result to the RGB background
-    // before it goes through the next passes
-    vtkNew<vtkF3DSolidBackgroundPass> bgPass;
-    bgPass->SetDelegatePass(renderingPass);
-    renderingPass = bgPass;
-  }
-
   if (this->AntiAliasingModeEnabled == vtkF3DRenderer::AntiAliasingMode::FXAA)
   {
     vtkNew<vtkOpenGLFXAAPass> fxaaP;
@@ -1904,6 +1895,7 @@ void vtkF3DRenderer::ConfigureHDRISkybox()
 {
   this->SkyboxActor->SetTexture(this->HDRITexture);
   this->SkyboxActor->SetVisibility(this->HDRISkyboxVisible);
+  this->SkyboxActor->SetGammaCorrect(this->GetSRGBBlending());
   this->HDRISkyboxConfigured = true;
 }
 

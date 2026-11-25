@@ -69,8 +69,16 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
 
   if (!this->QuadHelper)
   {
+    std::string fsShader = vtkF3DPostprocessFS;
+
+    if (!this->ColorInputIsLinear)
+    {
+      vtkShaderProgram::Substitute(fsShader, "//VTK::ColorSpace::Impl",
+        "  color.rgb = pow(color.rgb, vec3(2.2));\n");
+    }
+
     this->QuadHelper = std::make_shared<vtkOpenGLQuadHelper>(renWin,
-      vtkOpenGLRenderUtilities::GetFullScreenQuadVertexShader().c_str(), vtkF3DPostprocessFS, "");
+      vtkOpenGLRenderUtilities::GetFullScreenQuadVertexShader().c_str(), fsShader.c_str(), "");
   }
   else
   {
@@ -84,7 +92,7 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
   }
 
   this->ColorTexture->Activate();
-  this->QuadHelper->Program->SetUniformi("texLinearHDR", this->ColorTexture->GetTextureUnit());
+  this->QuadHelper->Program->SetUniformi("texColor", this->ColorTexture->GetTextureUnit());
 
   if (this->DepthTexture)
   {
@@ -109,8 +117,13 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
     this->QuadHelper->Program->SetUniformf("time", ren->GetTotalTime());
   }
 
-  ostate->vtkglDisable(GL_BLEND);
+  ostate->vtkglEnable(GL_BLEND);
+  ostate->vtkglBlendFuncSeparate(
+    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
   ostate->vtkglDisable(GL_DEPTH_TEST);
+
+  r->Clear();
 
   this->QuadHelper->Render();
 
