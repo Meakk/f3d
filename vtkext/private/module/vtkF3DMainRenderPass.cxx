@@ -248,15 +248,15 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   vtkRenderState s2(s->GetRenderer());
   s2.SetFrameBuffer(this->FrameBufferObject);
 
-  // render skybox
-  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
-  this->BackgroundPass->Render(&s2);
-  this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
-
   // render main props
   s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
+
+  // render skybox
+  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
+  this->BackgroundPass->Render(&s2);
+  this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
 
   // render "on top" props (depth test disabled)
   ostate->vtkglDisable(GL_DEPTH_TEST);

@@ -129,10 +129,6 @@ void vtkF3DHexagonalBokehBlurPass::RenderDelegate(const vtkRenderState* s, int w
   this->FrameBufferObject->ActivateDrawBuffers(1);
   this->FrameBufferObject->StartNonOrtho(width, height);
 
-  vtkOpenGLRenderer* glRen = vtkOpenGLRenderer::SafeDownCast(s->GetRenderer());
-
-  glRen->GetState()->vtkglClear(GL_COLOR_BUFFER_BIT);
-
   this->DelegatePass->Render(s);
   this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
 
@@ -236,6 +232,7 @@ void vtkF3DHexagonalBokehBlurPass::RenderRhomboidBlur(
     ssImpl << "  blurDir = vec2(cos(-5.0*PI/6.0), sin(-5.0*PI/6.0));\n";
     ssImpl << "  vec3 color2 = BlurTexture(diagonalBlurTexture, texCoord, blurDir).rgb;\n";
     ssImpl << "  gl_FragData[0] = vec4((color1 + color2) / 3.0, 1.0);\n";
+    ssImpl << "  gl_FragDepth = 1.0;\n";
 
     vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl", ssImpl.str());
 
@@ -309,8 +306,9 @@ void vtkF3DHexagonalBokehBlurPass::Render(const vtkRenderState* s)
 
   ostate->vtkglDisable(GL_BLEND);
   ostate->vtkglDisable(GL_DEPTH_TEST);
-
   this->RenderDirectionalBlur(renWin, w, h);
+
+  ostate->vtkglEnable(GL_DEPTH_TEST);
   this->RenderRhomboidBlur(renWin, w, h);
 
   vtkOpenGLCheckErrorMacro("failed after Render");
