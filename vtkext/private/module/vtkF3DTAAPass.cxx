@@ -78,8 +78,21 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   this->ConfigureJitter(size[0], size[1]);
   this->PreRender(state);
   renWin->GetState()->PushFramebufferBindings();
-  this->RenderDelegate(
-    state, size[0], size[1], size[0], size[1], this->FrameBufferObject, this->ColorTexture);
+
+  vtkRenderState delegateState(renderer);
+  delegateState.SetPropArrayAndCount(state->GetPropArray(), state->GetPropArrayCount());
+  delegateState.SetFrameBuffer(this->FrameBufferObject);
+
+  this->FrameBufferObject->Bind();
+  this->FrameBufferObject->AddColorAttachment(0, this->ColorTexture);
+  this->FrameBufferObject->AddDepthAttachment();
+  this->FrameBufferObject->StartNonOrtho(size[0], size[1]);
+
+  renderer->Clear();
+
+  this->DelegatePass->Render(&delegateState);
+  this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();
+
   renWin->GetState()->PopFramebufferBindings();
   this->PostRender(state);
 
@@ -132,9 +145,24 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
 }
 
 //------------------------------------------------------------------------------
+void vtkF3DTAAPass::SetDelegatePass(vtkRenderPass* delegate)
+{
+  if (this->DelegatePass != delegate)
+  {
+    this->DelegatePass = delegate;
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
 void vtkF3DTAAPass::ReleaseGraphicsResources(vtkWindow* window)
 {
   this->Superclass::ReleaseGraphicsResources(window);
+
+  if (this->DelegatePass)
+  {
+    this->DelegatePass->ReleaseGraphicsResources(window);
+  }
 
   if (this->FrameBufferObject)
   {
