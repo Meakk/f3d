@@ -76,6 +76,23 @@ public:
   vtkGetMacro(UseRaytracing, bool);
   ///@}
 
+  ///@{
+  /**
+   * Set/Get whether the background props are blurred, simulating a depth of field.
+   * Off by default.
+   */
+  vtkSetMacro(UseBlurBackground, bool);
+  vtkGetMacro(UseBlurBackground, bool);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get the size of the circle of confusion used to blur the background.
+   */
+  vtkSetMacro(CircleOfConfusionRadius, double);
+  vtkGetMacro(CircleOfConfusionRadius, double);
+  ///@}
+
   /**
    * Split the props of the render state in background, main and on top props, discarding the
    * others, and configure the mappers of the main props.
@@ -117,9 +134,12 @@ protected:
 
   vtkSmartPointer<vtkRenderPass> DelegatePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> ReflectionPass;
+  vtkSmartPointer<vtkRenderPass> BackgroundPass;
 
   bool ArmatureVisible = false;
   bool UseRaytracing = false;
+  bool UseBlurBackground = false;
+  double CircleOfConfusionRadius = 20.0;
 
   std::vector<vtkProp*> BackgroundProps;
   std::vector<vtkProp*> MainProps;

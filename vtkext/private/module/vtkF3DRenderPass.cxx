@@ -2,7 +2,6 @@
 
 #include "F3DLog.h"
 #include "vtkF3DDepthPrePass.h"
-#include "vtkF3DHexagonalBokehBlurPass.h"
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
@@ -135,22 +134,12 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     this->DepthPrePass->SetDelegatePass(depthSequence);
   }
 
-  // background pass, setup framebuffer, clear and draw skybox
-  const vtkNew<vtkOpaquePass> bgP;
-  vtkNew<vtkCameraPass> bgCamP;
-  bgCamP->SetDelegatePass(bgP);
-
-  if (this->UseBlurBackground)
-  {
-    this->BlurBackgroundPass = vtkSmartPointer<vtkF3DHexagonalBokehBlurPass>::New();
-    this->BlurBackgroundPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
-    this->BlurBackgroundPass->SetDelegatePass(bgCamP);
-  }
-
   // main pass
   this->MainPass = vtkSmartPointer<vtkF3DMainRenderPass>::New();
   this->MainPass->SetArmatureVisible(this->ArmatureVisible);
   this->MainPass->SetUseRaytracing(this->UseRaytracing);
+  this->MainPass->SetUseBlurBackground(this->UseBlurBackground);
+  this->MainPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
 
 #if F3D_MODULE_RAYTRACING
   if (this->UseRaytracing)

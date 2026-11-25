@@ -27,7 +27,6 @@
 class vtkActor;
 class vtkF3DDepthPrePass;
 class vtkF3DSkinningMorphingPass;
-class vtkF3DHexagonalBokehBlurPass;
 class vtkF3DMainRenderPass;
 class vtkF3DReflectionRenderPass;
 class vtkCamera;
@@ -99,7 +98,6 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
-  vtkSmartPointer<vtkF3DHexagonalBokehBlurPass> BlurBackgroundPass;
   vtkSmartPointer<vtkF3DSkinningMorphingPass> SkinningMorphingPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;

@@ -1,5 +1,6 @@
 #include "vtkF3DMainRenderPass.h"
 
+#include "vtkF3DHexagonalBokehBlurPass.h"
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
@@ -8,6 +9,7 @@
 #include <vtkActor.h>
 #include <vtkInformation.h>
 #include <vtkObjectFactory.h>
+#include <vtkOpaquePass.h>
 #include <vtkOpenGLError.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderWindow.h>
@@ -165,6 +167,19 @@ void vtkF3DMainRenderPass::InitializeResources(
     this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
   }
   this->FrameBufferObject->SetContext(renWin);
+
+  const vtkNew<vtkOpaquePass> bgP;
+  if (this->UseBlurBackground)
+  {
+    vtkNew<vtkF3DHexagonalBokehBlurPass> blurP;
+    blurP->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
+    blurP->SetDelegatePass(bgP);
+    this->BackgroundPass = blurP;
+  }
+  else
+  {
+    this->BackgroundPass = bgP;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -224,18 +239,16 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
 
   r->Clear();
 
-  // render skybox
-  for (vtkProp* prop : this->BackgroundProps)
-  {
-    prop->RenderOpaqueGeometry(r);
-    this->NumberOfRenderedProps++;
-  }
-
-  // render main props using the delegate pass
   vtkRenderState s2(s->GetRenderer());
-  s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
   s2.SetFrameBuffer(this->FrameBufferObject);
 
+  // render skybox
+  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
+  this->BackgroundPass->Render(&s2);
+  this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
+
+  // render main props
+  s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
 
