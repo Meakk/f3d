@@ -16,8 +16,6 @@
 #ifndef vtkF3DRenderPass_h
 #define vtkF3DRenderPass_h
 
-#include "vtkF3DPreserveCameraFramebufferPass.h"
-
 #include <vtkOpenGLQuadHelper.h>
 #include <vtkOpenGLRenderPass.h>
 #include <vtkSmartPointer.h>
@@ -29,6 +27,9 @@
 class vtkActor;
 class vtkF3DDepthPrePass;
 class vtkF3DSkinningMorphingPass;
+class vtkF3DHexagonalBokehBlurPass;
+class vtkF3DMainRenderPass;
+class vtkF3DReflectionRenderPass;
 class vtkCamera;
 class vtkInformationIntegerKey;
 class vtkAbstractMapper;
@@ -83,8 +84,6 @@ protected:
 
   void Blend(const vtkRenderState* s);
 
-  void ReflectCamera(vtkCamera* originalCam, vtkMatrix4x4* actorMatrix, vtkCamera* reflectedCam);
-
   bool ArmatureVisible = false;
   bool UseRaytracing = false;
   bool UseAnari = false;
@@ -100,21 +99,15 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
+  vtkSmartPointer<vtkF3DHexagonalBokehBlurPass> BlurBackgroundPass;
   vtkSmartPointer<vtkF3DSkinningMorphingPass> SkinningMorphingPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BackgroundPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BakeReflectionPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> MainPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> MainOnTopPass;
+  vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;
+  vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
 
   double Bounds[6] = {};
 
   vtkMTimeType InitializeTime = 0;
-
-  std::vector<vtkProp*> BackgroundProps;
-  std::vector<vtkProp*> MainOnTopProps;
-  std::vector<vtkProp*> MainProps;
-  std::vector<vtkProp*> ReflectionProps;
 
   std::shared_ptr<vtkOpenGLQuadHelper> BlendQuadHelper;
 

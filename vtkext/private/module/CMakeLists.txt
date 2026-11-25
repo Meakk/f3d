@@ -85,6 +85,7 @@ set(classes
   vtkF3DHexagonalBokehBlurPass
   vtkF3DInteractorEventRecorder
   vtkF3DInteractorStyle
+  vtkF3DMainRenderPass
   vtkF3DMemoryMesh
   vtkF3DMetaImporter
   vtkF3DNamedColors
@@ -95,6 +96,7 @@ set(classes
   vtkF3DPointSplatMapper
   vtkF3DPolyDataMapper
   vtkF3DPostProcessFilter
+  vtkF3DReflectionRenderPass
   vtkF3DRenderPass
   vtkF3DRenderer
   vtkF3DSkinningMorphingPass

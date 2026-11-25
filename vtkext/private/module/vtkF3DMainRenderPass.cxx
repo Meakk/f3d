@@ -1,0 +1,246 @@
+#include "vtkF3DMainRenderPass.h"
+
+#include "vtkF3DImporter.h"
+#include "vtkF3DOpenGLGridMapper.h"
+#include "vtkF3DPolyDataMapper.h"
+#include "vtkF3DReflectionRenderPass.h"
+
+#include <vtkActor.h>
+#include <vtkInformation.h>
+#include <vtkObjectFactory.h>
+#include <vtkOpenGLError.h>
+#include <vtkOpenGLFramebufferObject.h>
+#include <vtkOpenGLRenderWindow.h>
+#include <vtkOpenGLState.h>
+#include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkProp3D.h>
+#include <vtkProperty.h>
+#include <vtkRenderState.h>
+#include <vtkRenderer.h>
+#include <vtkSkybox.h>
+#include <vtkTextureObject.h>
+
+vtkStandardNewMacro(vtkF3DMainRenderPass);
+
+//------------------------------------------------------------------------------
+vtkF3DMainRenderPass::vtkF3DMainRenderPass()
+  : ColorTexture(vtkSmartPointer<vtkTextureObject>::New())
+  , DepthTexture(vtkSmartPointer<vtkTextureObject>::New())
+{
+}
+
+//------------------------------------------------------------------------------
+vtkF3DMainRenderPass::~vtkF3DMainRenderPass() = default;
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::PrintSelf(ostream& os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+  os << indent << "ColorTexture: " << this->ColorTexture << "\n";
+  os << indent << "DepthTexture: " << this->DepthTexture << "\n";
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::SetDelegatePass(vtkRenderPass* delegate)
+{
+  if (this->DelegatePass != delegate)
+  {
+    this->DelegatePass = delegate;
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::SetReflectionPass(vtkF3DReflectionRenderPass* reflectionPass)
+{
+  if (this->ReflectionPass != reflectionPass)
+  {
+    this->ReflectionPass = reflectionPass;
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::FilterProps(const vtkRenderState* s)
+{
+  this->BackgroundProps.clear();
+  this->MainOnTopProps.clear();
+  this->MainProps.clear();
+
+  vtkProp* const* props = s->GetPropArray();
+  for (int i = 0; i < s->GetPropArrayCount(); i++)
+  {
+    vtkProp* prop = props[i];
+    if (vtkSkybox::SafeDownCast(prop))
+    {
+      this->BackgroundProps.push_back(prop);
+    }
+    else if (vtkProp3D::SafeDownCast(prop))
+    {
+      // armature
+      vtkInformation* info = prop->GetPropertyKeys();
+      if (info && info->Has(vtkF3DImporter::ACTOR_IS_ARMATURE()))
+      {
+        if (this->ArmatureVisible)
+        {
+          this->MainOnTopProps.push_back(prop);
+        }
+      }
+      else
+      {
+        vtkActor* actor = vtkActor::SafeDownCast(prop);
+
+        if (actor)
+        {
+          vtkPolyDataMapper* polyMapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
+          if (polyMapper)
+          {
+#if F3D_MODULE_RAYTRACING
+            // Enable linear colorspace conversion during raytracing on PBR actors.
+            if (auto* mapper = vtkF3DPolyDataMapper::SafeDownCast(polyMapper))
+            {
+              mapper->SetUseLinearColorSpace(
+                this->UseRaytracing && actor->GetProperty()->GetInterpolation() == VTK_PBR);
+            }
+#endif
+            polyMapper->SetVBOShiftScaleMethod(
+              vtkPolyDataMapper::ShiftScaleMethodType::DISABLE_SHIFT_SCALE);
+
+            vtkPolyData* input =
+              polyMapper->GetNumberOfInputPorts() > 0 ? polyMapper->GetInput() : nullptr;
+
+            if (input && input->GetNumberOfPoints() == 0)
+            {
+              // skip rendering if no point
+              continue;
+            }
+          }
+        }
+
+        this->MainProps.push_back(prop);
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::ReleaseGraphicsResources(vtkWindow* w)
+{
+  this->Superclass::ReleaseGraphicsResources(w);
+
+  this->FrameBufferObject = nullptr;
+  this->ColorTexture->ReleaseGraphicsResources(w);
+  this->DepthTexture->ReleaseGraphicsResources(w);
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::InitializeResources(
+  vtkOpenGLRenderWindow* renWin, int width, int height)
+{
+  this->ColorTexture->SetContext(renWin);
+  if (!this->ColorTexture->GetHandle())
+  {
+    this->ColorTexture->SetInternalFormat(GL_RGBA32F);
+    this->ColorTexture->SetDataType(GL_FLOAT);
+    this->ColorTexture->Create2D(width, height, 4, VTK_UNSIGNED_CHAR, false);
+  }
+  this->ColorTexture->Resize(width, height);
+
+  this->DepthTexture->SetContext(renWin);
+  if (!this->DepthTexture->GetHandle())
+  {
+    // Needed because VTK can pick the wrong format with certain drivers
+#ifdef F3D_USE_GLES
+    // Fixed32 not supported on GLES
+    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Fixed24);
+#else
+    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Fixed32);
+#endif
+  }
+  this->DepthTexture->Resize(width, height);
+
+  if (!this->FrameBufferObject)
+  {
+    this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
+  }
+  this->FrameBufferObject->SetContext(renWin);
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::RenderProps(const vtkRenderState* s, std::vector<vtkProp*>& props,
+  int width, int height)
+{
+  vtkRenderState s2(s->GetRenderer());
+  s2.SetPropArrayAndCount(props.data(), static_cast<int>(props.size()));
+  s2.SetFrameBuffer(this->FrameBufferObject);
+
+  this->DelegatePass->Render(&s2);
+  this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
+{
+  vtkOpenGLClearErrorMacro();
+
+  this->NumberOfRenderedProps = 0;
+
+  if (!this->DelegatePass)
+  {
+    vtkWarningMacro(<< " no delegate.");
+    return;
+  }
+
+  vtkRenderer* r = s->GetRenderer();
+  vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
+  vtkOpenGLState* ostate = renWin->GetState();
+
+  int width = 0;
+  int height = 0;
+  int x = 0;
+  int y = 0;
+  if (s->GetFrameBuffer() == nullptr)
+  {
+    r->GetTiledSizeAndOrigin(&width, &height, &x, &y);
+  }
+  else
+  {
+    int size[2];
+    s->GetWindowSize(size);
+    width = size[0];
+    height = size[1];
+  }
+
+  this->InitializeResources(renWin, width, height);
+
+  this->FilterProps(s);
+
+  if (this->ReflectionPass)
+  {
+    // the reflection result is used when rendering the main props so it must be rendered before
+    vtkRenderState reflState(r);
+    reflState.SetPropArrayAndCount(
+      this->MainProps.data(), static_cast<int>(this->MainProps.size()));
+    reflState.SetFrameBuffer(s->GetFrameBuffer());
+
+    this->ReflectionPass->Render(&reflState);
+  }
+
+  ostate->PushFramebufferBindings();
+
+  this->FrameBufferObject->Bind();
+  this->FrameBufferObject->AddColorAttachment(0, this->ColorTexture);
+  this->FrameBufferObject->AddDepthAttachment(this->DepthTexture);
+  this->FrameBufferObject->StartNonOrtho(width, height);
+
+  r->Clear();
+
+  this->RenderProps(s, this->BackgroundProps, width, height);
+  this->RenderProps(s, this->MainProps, width, height);
+  this->RenderProps(s, this->MainOnTopProps, width, height);
+
+  ostate->PopFramebufferBindings();
+
+  vtkOpenGLCheckErrorMacro("failed after Render");
+}

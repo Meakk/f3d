@@ -6,7 +6,8 @@
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
-#include "vtkF3DPreserveCameraFramebufferPass.h"
+#include "vtkF3DMainRenderPass.h"
+#include "vtkF3DReflectionRenderPass.h"
 #include "vtkF3DRenderer.h"
 #include "vtkF3DSkinningMorphingPass.h"
 #include "vtkF3DStochasticTransparentPass.h"
@@ -92,10 +93,6 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   {
     this->DepthPrePass->ReleaseGraphicsResources(w);
   }
-  if (this->BackgroundPass)
-  {
-    this->BackgroundPass->ReleaseGraphicsResources(w);
-  }
   if (this->BakeReflectionPass)
   {
     this->BakeReflectionPass->ReleaseGraphicsResources(w);
@@ -104,83 +101,11 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   {
     this->MainPass->ReleaseGraphicsResources(w);
   }
-  if (this->MainOnTopPass)
-  {
-    this->MainOnTopPass->ReleaseGraphicsResources(w);
-  }
 }
 
 // ----------------------------------------------------------------------------
 void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 {
-  // Always updates props from the renderstate
-  this->BackgroundProps.clear();
-  this->MainOnTopProps.clear();
-  this->MainProps.clear();
-  this->ReflectionProps.clear();
-
-  // assign props to the correct pass
-  vtkProp* const* props = s->GetPropArray();
-  for (int i = 0; i < s->GetPropArrayCount(); i++)
-  {
-    vtkProp* prop = props[i];
-    if (vtkSkybox::SafeDownCast(prop))
-    {
-      this->BackgroundProps.push_back(prop);
-    }
-    else if (vtkProp3D::SafeDownCast(prop))
-    {
-      // armature
-      vtkInformation* info = prop->GetPropertyKeys();
-      if (info && info->Has(vtkF3DImporter::ACTOR_IS_ARMATURE()))
-      {
-        if (this->ArmatureVisible)
-        {
-          this->MainOnTopProps.push_back(prop);
-        }
-      }
-      else
-      {
-        vtkActor* actor = vtkActor::SafeDownCast(prop);
-
-        if (actor)
-        {
-          vtkPolyDataMapper* polyMapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
-          if (polyMapper)
-          {
-#if F3D_MODULE_RAYTRACING
-            // Enable linear colorspace conversion during raytracing on PBR actors.
-            if (auto* mapper = vtkF3DPolyDataMapper::SafeDownCast(polyMapper))
-            {
-              mapper->SetUseLinearColorSpace(
-                this->UseRaytracing && actor->GetProperty()->GetInterpolation() == VTK_PBR);
-            }
-#endif
-            polyMapper->SetVBOShiftScaleMethod(
-              vtkPolyDataMapper::ShiftScaleMethodType::DISABLE_SHIFT_SCALE);
-
-            vtkPolyData* input =
-              polyMapper->GetNumberOfInputPorts() > 0 ? polyMapper->GetInput() : nullptr;
-
-            if (input && input->GetNumberOfPoints() == 0)
-            {
-              // skip rendering if no point
-              continue;
-            }
-          }
-        }
-
-        this->MainProps.push_back(prop);
-
-        if (!actor || vtkF3DOpenGLGridMapper::SafeDownCast(actor->GetMapper()) == nullptr)
-        {
-          // Do not add the grid into the reflective actors
-          this->ReflectionProps.push_back(prop);
-        }
-      }
-    }
-  }
-
   if (this->InitializeTime == this->MTime)
   {
     // already initialized
@@ -215,32 +140,17 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   vtkNew<vtkCameraPass> bgCamP;
   bgCamP->SetDelegatePass(bgP);
 
-  this->BackgroundPass = vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass>::New();
-  this->BackgroundPass->SetColorFormat(vtkTextureObject::Float16);
-
   if (this->UseBlurBackground)
   {
-    vtkNew<vtkF3DHexagonalBokehBlurPass> blur;
-    blur->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
-    blur->SetDelegatePass(bgCamP);
-    this->BackgroundPass->SetDelegatePass(blur);
-  }
-  else
-  {
-    this->BackgroundPass->SetDelegatePass(bgCamP);
+    this->BlurBackgroundPass = vtkSmartPointer<vtkF3DHexagonalBokehBlurPass>::New();
+    this->BlurBackgroundPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
+    this->BlurBackgroundPass->SetDelegatePass(bgCamP);
   }
 
   // main pass
-  this->MainPass = vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass>::New();
-  this->MainPass->SetColorFormat(vtkTextureObject::Float32);
-
-  // Needed because VTK can pick the wrong format with certain drivers
-#ifdef F3D_USE_GLES
-  // Fixed32 not supported on GLES
-  this->MainPass->SetDepthFormat(vtkTextureObject::Fixed24);
-#else
-  this->MainPass->SetDepthFormat(vtkTextureObject::Fixed32);
-#endif
+  this->MainPass = vtkSmartPointer<vtkF3DMainRenderPass>::New();
+  this->MainPass->SetArmatureVisible(this->ArmatureVisible);
+  this->MainPass->SetUseRaytracing(this->UseRaytracing);
 
 #if F3D_MODULE_RAYTRACING
   if (this->UseRaytracing)
@@ -329,14 +239,14 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     vtkNew<vtkSequencePass> sequence;
     sequence->SetPasses(collection);
 
-    vtkNew<vtkCameraPass> camP;
-    camP->SetDelegatePass(sequence);
-
-    vtkSmartPointer<vtkRenderPass> mainSequencePass = camP;
+    vtkSmartPointer<vtkRenderPass> mainSequencePass = sequence;
 
 #if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 7, 20261016)
     if (this->RenderShadows)
     {
+      vtkNew<vtkCameraPass> camP;
+      camP->SetDelegatePass(sequence);
+
       // shadows
       const vtkNew<vtkShadowMapBakerPass> shadowBakeP;
       shadowBakeP->SetExponentialConstant(this->ShadowExponentialConstant);
@@ -377,10 +287,15 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
     }
 
     // reflection baking pass, same as main pass but with reflected camera
-    this->BakeReflectionPass = vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass>::New();
-    this->BakeReflectionPass->SetColorFormat(vtkTextureObject::Float16);
-    this->BakeReflectionPass->SetDelegatePass(camP);
+    this->BakeReflectionPass = vtkSmartPointer<vtkF3DReflectionRenderPass>::New();
+    this->BakeReflectionPass->SetDelegatePass(sequence);
 
+    if (this->RenderReflection && renderer)
+    {
+      this->MainPass->SetReflectionPass(this->BakeReflectionPass);
+    }
+
+    vtkProp* const* props = s->GetPropArray();
     for (int i = 0; i < s->GetPropArrayCount(); i++)
     {
       vtkActor* actor = vtkActor::SafeDownCast(props[i]);
@@ -395,32 +310,6 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
         }
       }
     }
-  }
-
-  {
-    const vtkNew<vtkLightsPass> lightsP;
-    const vtkNew<vtkOpaquePass> opaqueP;
-
-    vtkNew<vtkRenderPassCollection> collection;
-    collection->AddItem(lightsP);
-    collection->AddItem(opaqueP);
-
-    vtkNew<vtkSequencePass> sequence;
-    sequence->SetPasses(collection);
-
-    vtkNew<vtkCameraPass> camP;
-    camP->SetDelegatePass(sequence);
-
-    this->MainOnTopPass = vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass>::New();
-    this->MainOnTopPass->SetDelegatePass(camP);
-
-    // Needed because VTK can pick the wrong format with certain drivers
-#ifdef F3D_USE_GLES
-    // Fixed32 not supported on GLES
-    this->MainOnTopPass->SetDepthFormat(vtkTextureObject::Fixed24);
-#else
-    this->MainOnTopPass->SetDepthFormat(vtkTextureObject::Fixed32);
-#endif
   }
 
   this->InitializeTime = this->GetMTime();
@@ -534,68 +423,29 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
 
   if (!uiOnly)
   {
+    // the props are filtered here as the depth pre-pass needs them before the main pass is rendered
+    this->MainPass->FilterProps(s);
+
     // the depth pre-pass must be the first pass to run, it is not relevant with external renderers
     if (!this->UseRaytracing && !this->UseAnari)
     {
+      std::vector<vtkProp*> mainProps = this->MainPass->GetMainProps();
+
       vtkRenderState depthPrePassState(s->GetRenderer());
       depthPrePassState.SetPropArrayAndCount(
-        this->MainProps.data(), static_cast<int>(this->MainProps.size()));
+        mainProps.data(), static_cast<int>(mainProps.size()));
       depthPrePassState.SetFrameBuffer(s->GetFrameBuffer());
 
       this->DepthPrePass->Render(&depthPrePassState);
     }
 
-    vtkRenderState backgroundState(s->GetRenderer());
-    backgroundState.SetPropArrayAndCount(
-      this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
-    backgroundState.SetFrameBuffer(s->GetFrameBuffer());
-
-    this->BackgroundPass->Render(&backgroundState);
-
-    // the reflection result is used in the main pass so it must be rendered before
     const vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(r);
-
-#if F3D_MODULE_RAYTRACING
-    if (!this->UseRaytracing)
-#endif
+    if (this->BakeReflectionPass && renderer)
     {
-      if (this->RenderReflection && renderer != nullptr)
-      {
-        vtkRenderState reflState(s->GetRenderer());
-        reflState.SetPropArrayAndCount(
-          this->ReflectionProps.data(), static_cast<int>(this->ReflectionProps.size()));
-        reflState.SetFrameBuffer(s->GetFrameBuffer());
-
-        vtkMatrix4x4* actorMatrix = renderer->GetGridMatrix();
-
-        vtkCamera* originalCam = s->GetRenderer()->GetActiveCamera();
-        const vtkNew<vtkCamera> reflectedCam;
-
-        // reflect camera according to the grid plane
-        this->ReflectCamera(originalCam, actorMatrix, reflectedCam);
-        r->SetActiveCamera(reflectedCam);
-
-        this->BakeReflectionPass->Render(&reflState);
-
-        // restore camera and mark it dirty to ensure headlights are recomputed
-        originalCam->Modified();
-        r->SetActiveCamera(originalCam);
-      }
+      this->BakeReflectionPass->SetReflectionMatrix(renderer->GetGridMatrix());
     }
 
-    vtkRenderState mainState(s->GetRenderer());
-    mainState.SetPropArrayAndCount(
-      this->MainProps.data(), static_cast<int>(this->MainProps.size()));
-    mainState.SetFrameBuffer(s->GetFrameBuffer());
-
-    this->MainPass->Render(&mainState);
-
-    vtkRenderState mainOnTopState(s->GetRenderer());
-    mainOnTopState.SetPropArrayAndCount(
-      this->MainOnTopProps.data(), static_cast<int>(this->MainOnTopProps.size()));
-    mainOnTopState.SetFrameBuffer(s->GetFrameBuffer());
-
-    this->MainOnTopPass->Render(&mainOnTopState);
+    this->MainPass->Render(s);
   }
 
   // restore background color before compositing the layers
@@ -628,57 +478,16 @@ void vtkF3DRenderPass::Blend(const vtkRenderState* s)
     std::string FSSource = vtkOpenGLRenderUtilities::GetFullScreenQuadFragmentShaderTemplate();
 
     std::stringstream ssDecl;
-    ssDecl << "uniform sampler2D texBackground;\n"
-              "uniform sampler2D texMain;\n"
-              "uniform sampler2D texMainOnTop;\n"
-              "vec3 toLinear(vec3 color) { return pow(color.rgb, vec3(2.2)); }\n"
-              "vec3 toSRGB(vec3 color) { return pow(color.rgb, vec3(1.0 / 2.2)); }\n"
+    ssDecl << "uniform sampler2D texLinearHDR;\n"
+              "uniform sampler2D texDepth;\n"
+              "uniform sampler2D texNormal;\n"
               "//VTK::FSQ::Decl";
 
     vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Decl", ssDecl.str());
 
     std::stringstream ssImpl;
 
-    ssImpl << "  vec4 mainSample = texture(texMain, texCoord);\n";
-
-    if (!this->UseRaytracing)
-    {
-      // the input color is alpha premultiplied, we need to divide it, then
-      // convert to linear space, and finally premultiply back by the alpha value
-      ssImpl << "  if (mainSample.a > 0.0)\n";
-      ssImpl << "    mainSample.rgb = toLinear(mainSample.rgb / mainSample.a);\n";
-      ssImpl << "  mainSample.rgb *= mainSample.a;\n";
-    }
-
-    // blend main with background
-    if (this->ForceOpaqueBackground)
-    {
-      ssImpl << "  vec3 bgSample = texture(texBackground, texCoord).rgb;\n";
-      ssImpl << "  bgSample = toLinear(bgSample);\n";
-
-      // alpha blending main to opaque background
-      ssImpl << "  vec4 result = vec4((1.0 - mainSample.a) * bgSample + mainSample.rgb, 1.0);\n";
-    }
-    else
-    {
-      // the background is fully transparent, skip the blending
-      ssImpl << "  vec4 result = mainSample;\n";
-    }
-
-    // blend "on top"
-    ssImpl << "  vec4 onTopSample = texture(texMainOnTop, texCoord);\n";
-    ssImpl << "  if (onTopSample.a > 0.0)\n";
-    ssImpl << "    onTopSample.rgb = toLinear(onTopSample.rgb / onTopSample.a);\n";
-    ssImpl << "  onTopSample.rgb *= onTopSample.a;\n";
-    ssImpl << "  result.rgb = (1.0 - onTopSample.a) * result.rgb + onTopSample.rgb;\n";
-    ssImpl << "  result.a = (1.0 - onTopSample.a) * result.a + onTopSample.a;\n";
-
-    // divide by alpha and convert back to sRGB, premultiply again
-    ssImpl << "  if (result.a > 0.0)\n";
-    ssImpl << "    result.rgb = result.rgb / result.a;\n";
-    ssImpl << "  result.rgb = toSRGB(result.rgb);\n";
-
-    ssImpl << "  gl_FragData[0] = result;\n";
+    ssImpl << "  gl_FragData[0] = texture(texLinearHDR, texCoord);\n";
 
     vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl", ssImpl.str());
 
@@ -698,84 +507,23 @@ void vtkF3DRenderPass::Blend(const vtkRenderState* s)
     return;
   }
 
-  this->BackgroundPass->GetColorTexture()->SetWrapS(vtkTextureObject::ClampToEdge);
-  this->BackgroundPass->GetColorTexture()->SetWrapT(vtkTextureObject::ClampToEdge);
-
-  this->BackgroundPass->GetColorTexture()->Activate();
   this->MainPass->GetColorTexture()->Activate();
-  this->MainOnTopPass->GetColorTexture()->Activate();
+  this->DepthPrePass->GetDepthTexture()->Activate();
+  this->DepthPrePass->GetNormalTexture()->Activate();
+
   this->BlendQuadHelper->Program->SetUniformi(
-    "texBackground", this->BackgroundPass->GetColorTexture()->GetTextureUnit());
+    "texLinearHDR", this->MainPass->GetColorTexture()->GetTextureUnit());
   this->BlendQuadHelper->Program->SetUniformi(
-    "texMain", this->MainPass->GetColorTexture()->GetTextureUnit());
+    "texDepth", this->DepthPrePass->GetDepthTexture()->GetTextureUnit());
   this->BlendQuadHelper->Program->SetUniformi(
-    "texMainOnTop", this->MainOnTopPass->GetColorTexture()->GetTextureUnit());
+    "texNormal", this->DepthPrePass->GetNormalTexture()->GetTextureUnit());
 
   ostate->vtkglDisable(GL_BLEND);
   ostate->vtkglDisable(GL_DEPTH_TEST);
 
   this->BlendQuadHelper->Render();
 
-  this->BackgroundPass->GetColorTexture()->Deactivate();
   this->MainPass->GetColorTexture()->Deactivate();
-  this->MainOnTopPass->GetColorTexture()->Deactivate();
-}
-
-// ----------------------------------------------------------------------------
-void vtkF3DRenderPass::ReflectCamera(
-  vtkCamera* originalCam, vtkMatrix4x4* actorMatrix, vtkCamera* reflectedCam)
-{
-  // compute the reflection matrix
-  // see https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node159.html
-  double n[3] = { actorMatrix->GetElement(0, 1), actorMatrix->GetElement(1, 1),
-    actorMatrix->GetElement(2, 1) };
-  vtkMath::Normalize(n);
-
-  // Plane center point
-  const double p[3] = { actorMatrix->GetElement(0, 3), actorMatrix->GetElement(1, 3),
-    actorMatrix->GetElement(2, 3) };
-
-  const double a = n[0], b = n[1], c = n[2];
-  const double d = a * p[0] + b * p[1] + c * p[2];
-
-  vtkNew<vtkMatrix4x4> reflectionMatrix;
-  reflectionMatrix->SetElement(0, 0, 1 - 2 * a * a);
-  reflectionMatrix->SetElement(0, 1, -2 * a * b);
-  reflectionMatrix->SetElement(0, 2, -2 * a * c);
-  reflectionMatrix->SetElement(0, 3, 2 * a * d);
-
-  reflectionMatrix->SetElement(1, 0, -2 * a * b);
-  reflectionMatrix->SetElement(1, 1, 1 - 2 * b * b);
-  reflectionMatrix->SetElement(1, 2, -2 * b * c);
-  reflectionMatrix->SetElement(1, 3, 2 * b * d);
-
-  reflectionMatrix->SetElement(2, 0, -2 * a * c);
-  reflectionMatrix->SetElement(2, 1, -2 * b * c);
-  reflectionMatrix->SetElement(2, 2, 1 - 2 * c * c);
-  reflectionMatrix->SetElement(2, 3, 2 * c * d);
-
-  reflectionMatrix->SetElement(3, 0, 0);
-  reflectionMatrix->SetElement(3, 1, 0);
-  reflectionMatrix->SetElement(3, 2, 0);
-  reflectionMatrix->SetElement(3, 3, 1);
-
-  // Reflect position
-  double pos[4] = { originalCam->GetPosition()[0], originalCam->GetPosition()[1],
-    originalCam->GetPosition()[2], 1.0 };
-  reflectionMatrix->MultiplyPoint(pos, pos);
-
-  // Reflect focal point
-  double foc[4] = { originalCam->GetFocalPoint()[0], originalCam->GetFocalPoint()[1],
-    originalCam->GetFocalPoint()[2], 1.0 };
-  reflectionMatrix->MultiplyPoint(foc, foc);
-
-  // Reflect up vector (direction, w=0)
-  double up[4] = { originalCam->GetViewUp()[0], originalCam->GetViewUp()[1],
-    originalCam->GetViewUp()[2], 0.0 };
-  reflectionMatrix->MultiplyPoint(up, up);
-
-  reflectedCam->DeepCopy(originalCam);
-  reflectedCam->SetPosition(pos[0], pos[1], pos[2]);
-  reflectedCam->SetFocalPoint(foc[0], foc[1], foc[2]);
-  reflectedCam->SetViewUp(up[0], up[1], up[2]);
+  this->DepthPrePass->GetDepthTexture()->Deactivate();
+  this->DepthPrePass->GetNormalTexture()->Deactivate();
 }
