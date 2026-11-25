@@ -115,9 +115,6 @@ protected:
   vtkSmartPointer<vtkTextureObject> DepthTexture;
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
 
-  void RenderProps(const vtkRenderState* s, std::vector<vtkProp*>& props,
-    int width, int height);
-
   vtkSmartPointer<vtkRenderPass> DelegatePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> ReflectionPass;
 

@@ -168,18 +168,6 @@ void vtkF3DMainRenderPass::InitializeResources(
 }
 
 //------------------------------------------------------------------------------
-void vtkF3DMainRenderPass::RenderProps(const vtkRenderState* s, std::vector<vtkProp*>& props,
-  int width, int height)
-{
-  vtkRenderState s2(s->GetRenderer());
-  s2.SetPropArrayAndCount(props.data(), static_cast<int>(props.size()));
-  s2.SetFrameBuffer(this->FrameBufferObject);
-
-  this->DelegatePass->Render(&s2);
-  this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
-}
-
-//------------------------------------------------------------------------------
 void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
 {
   vtkOpenGLClearErrorMacro();
@@ -236,9 +224,28 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
 
   r->Clear();
 
-  this->RenderProps(s, this->BackgroundProps, width, height);
-  this->RenderProps(s, this->MainProps, width, height);
-  this->RenderProps(s, this->MainOnTopProps, width, height);
+  // render skybox
+  for (vtkProp* prop : this->BackgroundProps)
+  {
+    prop->RenderOpaqueGeometry(r);
+    this->NumberOfRenderedProps++;
+  }
+
+  // render main props using the delegate pass
+  vtkRenderState s2(s->GetRenderer());
+  s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
+  s2.SetFrameBuffer(this->FrameBufferObject);
+
+  this->DelegatePass->Render(&s2);
+  this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
+
+  // render "on top" props (depth test disabled)
+  ostate->vtkglDisable(GL_DEPTH_TEST);
+  for (vtkProp* prop : this->MainOnTopProps)
+  {
+    prop->RenderOpaqueGeometry(r);
+    this->NumberOfRenderedProps++;
+  }
 
   ostate->PopFramebufferBindings();
 
