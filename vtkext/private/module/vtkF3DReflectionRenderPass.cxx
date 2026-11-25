@@ -158,7 +158,6 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
 
   fbo->Bind();
   fbo->AddColorAttachment(0, this->ColorTexture);
-  fbo->ActivateDrawBuffer(0);
   fbo->AddDepthAttachment(this->DepthTexture);
   fbo->StartNonOrtho(width, height);
 
@@ -166,6 +165,8 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
   const vtkNew<vtkCamera> reflectedCam;
   this->ReflectCamera(originalCam, reflectedCam);
   r->SetActiveCamera(reflectedCam);
+
+  r->Clear();
 
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();
