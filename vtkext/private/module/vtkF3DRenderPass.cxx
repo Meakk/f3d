@@ -2,6 +2,7 @@
 
 #include "F3DLog.h"
 #include "vtkF3DDepthPrePass.h"
+#include "vtkF3DPostprocessRenderPass.h"
 #include "vtkF3DImporter.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
@@ -80,9 +81,9 @@ void vtkF3DRenderPass::PrintSelf(ostream& os, vtkIndent indent)
 // ----------------------------------------------------------------------------
 void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
 {
-  if (this->BlendQuadHelper)
+  if (this->PostprocessPass)
   {
-    this->BlendQuadHelper->ReleaseGraphicsResources(w);
+    this->PostprocessPass->ReleaseGraphicsResources(w);
   }
   if (this->SkinningMorphingPass)
   {
@@ -114,6 +115,8 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(s->GetRenderer());
 
   this->ReleaseGraphicsResources(glRenderer->GetRenderWindow());
+
+  this->PostprocessPass = vtkSmartPointer<vtkF3DPostprocessRenderPass>::New();
 
   // depth pre-pass, write normals and depth of opaque actors
   this->DepthPrePass = vtkSmartPointer<vtkF3DDepthPrePass>::New();
@@ -407,7 +410,7 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
   r->GetBackground(bgColor);
 
   // force background to full black when generating offscreen layers to avoid blending
-  // problems when compositing layers in the Blend() function
+  // problems when compositing layers in the full screen pass
   r->SetBackground(0.0, 0.0, 0.0);
 
   if (!uiOnly)
@@ -440,79 +443,12 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
   // restore background color before compositing the layers
   r->SetBackground(bgColor);
 
-  this->Blend(s);
+  this->PostprocessPass->SetColorTexture(this->MainPass->GetColorTexture());
+  this->PostprocessPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());
+  this->PostprocessPass->SetNormalTexture(this->DepthPrePass->GetNormalTexture());
+  this->PostprocessPass->Render(s);
 
   this->NumberOfRenderedProps = this->MainPass->GetNumberOfRenderedProps();
 
   this->PostRender(s);
-}
-
-// ----------------------------------------------------------------------------
-void vtkF3DRenderPass::Blend(const vtkRenderState* s)
-{
-  vtkRenderer* r = s->GetRenderer();
-  vtkOpenGLRenderWindow* renWin = static_cast<vtkOpenGLRenderWindow*>(r->GetRenderWindow());
-  vtkOpenGLState* ostate = renWin->GetState();
-
-  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
-  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
-
-  if (this->BlendQuadHelper && this->BlendQuadHelper->ShaderChangeValue < this->GetMTime())
-  {
-    this->BlendQuadHelper = nullptr;
-  }
-
-  if (!this->BlendQuadHelper)
-  {
-    std::string FSSource = vtkOpenGLRenderUtilities::GetFullScreenQuadFragmentShaderTemplate();
-
-    std::stringstream ssDecl;
-    ssDecl << "uniform sampler2D texLinearHDR;\n"
-              "uniform sampler2D texDepth;\n"
-              "uniform sampler2D texNormal;\n"
-              "//VTK::FSQ::Decl";
-
-    vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Decl", ssDecl.str());
-
-    std::stringstream ssImpl;
-
-    ssImpl << "  gl_FragData[0] = texture(texLinearHDR, texCoord);\n";
-
-    vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl", ssImpl.str());
-
-    this->BlendQuadHelper = std::make_shared<vtkOpenGLQuadHelper>(renWin,
-      vtkOpenGLRenderUtilities::GetFullScreenQuadVertexShader().c_str(), FSSource.c_str(), "");
-
-    this->BlendQuadHelper->ShaderChangeValue = this->GetMTime();
-  }
-  else
-  {
-    renWin->GetShaderCache()->ReadyShaderProgram(this->BlendQuadHelper->Program);
-  }
-
-  if (!this->BlendQuadHelper->Program || !this->BlendQuadHelper->Program->GetCompiled())
-  {
-    vtkErrorMacro("Couldn't build the blend shader program.");
-    return;
-  }
-
-  this->MainPass->GetColorTexture()->Activate();
-  this->DepthPrePass->GetDepthTexture()->Activate();
-  this->DepthPrePass->GetNormalTexture()->Activate();
-
-  this->BlendQuadHelper->Program->SetUniformi(
-    "texLinearHDR", this->MainPass->GetColorTexture()->GetTextureUnit());
-  this->BlendQuadHelper->Program->SetUniformi(
-    "texDepth", this->DepthPrePass->GetDepthTexture()->GetTextureUnit());
-  this->BlendQuadHelper->Program->SetUniformi(
-    "texNormal", this->DepthPrePass->GetNormalTexture()->GetTextureUnit());
-
-  ostate->vtkglDisable(GL_BLEND);
-  ostate->vtkglDisable(GL_DEPTH_TEST);
-
-  this->BlendQuadHelper->Render();
-
-  this->MainPass->GetColorTexture()->Deactivate();
-  this->DepthPrePass->GetDepthTexture()->Deactivate();
-  this->DepthPrePass->GetNormalTexture()->Deactivate();
 }

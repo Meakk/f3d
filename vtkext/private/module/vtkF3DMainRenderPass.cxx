@@ -199,6 +199,8 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
   vtkOpenGLState* ostate = renWin->GetState();
 
+  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
+
   int width = 0;
   int height = 0;
   int x = 0;

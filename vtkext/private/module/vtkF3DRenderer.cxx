@@ -242,7 +242,6 @@ vtkF3DRenderer::vtkF3DRenderer()
   this->EnvMapPrefiltered->HalfPrecisionOff();
 
   this->SkyboxActor->SetProjection(vtkSkybox::Sphere);
-  this->SkyboxActor->GammaCorrectOn();
   this->SkyboxActor->VisibilityOff();
 
 #if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 7, 20261016)
