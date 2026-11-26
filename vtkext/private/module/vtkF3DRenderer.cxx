@@ -2591,13 +2591,11 @@ void vtkF3DRenderer::UpdateActors()
 }
 
 //----------------------------------------------------------------------------
-bool vtkF3DRenderer::CaptureVideoFrame(std::byte* yPlane, std::byte* uPlane, std::byte* vPlane)
+void vtkF3DRenderer::CaptureVideoFrame(std::byte* yPlane, std::byte* uPlane, std::byte* vPlane)
 {
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(this->RenderWindow);
-
   this->FrameCapture->SetInputTexture(renWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0));
   this->FrameCapture->Capture(this, yPlane, uPlane, vPlane);
-  return true;
 }
 
 //----------------------------------------------------------------------------

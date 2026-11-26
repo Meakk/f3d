@@ -708,10 +708,8 @@ public:
    * - Y plane: width * height bytes
    * - U plane: (width / 2) * (height / 2) bytes
    * - V plane: (width / 2) * (height / 2) bytes
-   *
-   * Returns true if the frame was captured successfully, false otherwise.
    */
-  bool CaptureVideoFrame(std::byte* yPlane, std::byte* uPlane, std::byte* vPlane);
+  void CaptureVideoFrame(std::byte* yPlane, std::byte* uPlane, std::byte* vPlane);
 
   /**
    * Set XR mode
