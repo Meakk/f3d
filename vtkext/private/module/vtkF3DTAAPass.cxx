@@ -43,7 +43,7 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
     this->HistoryTexture = vtkSmartPointer<vtkTextureObject>::New();
     this->HistoryTexture->SetContext(renWin);
     this->HistoryTexture->SetFormat(GL_RGBA);
-    this->HistoryTexture->SetInternalFormat(GL_RGBA32F);
+    this->HistoryTexture->SetInternalFormat(GL_RGBA16F);
     this->HistoryTexture->SetDataType(GL_FLOAT);
     this->HistoryTexture->SetMinificationFilter(vtkTextureObject::Linear);
     this->HistoryTexture->SetMagnificationFilter(vtkTextureObject::Linear);
@@ -60,7 +60,7 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
     this->ColorTexture = vtkSmartPointer<vtkTextureObject>::New();
     this->ColorTexture->SetContext(renWin);
     this->ColorTexture->SetFormat(GL_RGBA);
-    this->ColorTexture->SetInternalFormat(GL_RGBA32F);
+    this->ColorTexture->SetInternalFormat(GL_RGBA16F);
     this->ColorTexture->SetDataType(GL_FLOAT);
     this->ColorTexture->SetMinificationFilter(vtkTextureObject::Linear);
     this->ColorTexture->SetMagnificationFilter(vtkTextureObject::Linear);
@@ -75,7 +75,7 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
     this->ResultTexture = vtkSmartPointer<vtkTextureObject>::New();
     this->ResultTexture->SetContext(renWin);
     this->ResultTexture->SetFormat(GL_RGBA);
-    this->ResultTexture->SetInternalFormat(GL_RGBA32F);
+    this->ResultTexture->SetInternalFormat(GL_RGBA16F);
     this->ResultTexture->SetDataType(GL_FLOAT);
     this->ResultTexture->SetMinificationFilter(vtkTextureObject::Linear);
     this->ResultTexture->SetMagnificationFilter(vtkTextureObject::Linear);

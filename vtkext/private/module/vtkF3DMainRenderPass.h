@@ -7,6 +7,9 @@
  * texture. The camera of the renderer is left untouched.
  * The props are split in three groups rendered in this order: the background props (skyboxes),
  * the main props and the on top props (armature, when visible).
+ * The on top props are rendered over everything else, but are depth tested between themselves.
+ * To do so, they are rendered using a dedicated depth texture, only allocated when there are on top
+ * props to render, so the main depth texture is left untouched.
  * If a reflection pass is set, it is rendered with the main props between the background and the
  * main groups, as its result is used when rendering the main props.
  * The textures are exposed with GetColorTexture() and GetDepthTexture().
@@ -25,6 +28,7 @@
 
 class vtkF3DReflectionRenderPass;
 class vtkProp;
+class vtkRenderer;
 class vtkOpenGLFramebufferObject;
 class vtkOpenGLRenderWindow;
 class vtkTextureObject;
@@ -133,9 +137,11 @@ protected:
   ~vtkF3DMainRenderPass() override;
 
   void InitializeResources(vtkOpenGLRenderWindow* renWin, int width, int height);
+  void RenderOnTopProps(vtkRenderer* r, vtkOpenGLRenderWindow* renWin, int width, int height);
 
   vtkSmartPointer<vtkTextureObject> ColorTexture;
   vtkSmartPointer<vtkTextureObject> DepthTexture;
+  vtkSmartPointer<vtkTextureObject> OnTopDepthTexture;
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
 
   vtkSmartPointer<vtkRenderPass> DelegatePass;

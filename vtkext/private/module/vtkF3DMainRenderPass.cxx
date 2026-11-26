@@ -143,6 +143,59 @@ void vtkF3DMainRenderPass::ReleaseGraphicsResources(vtkWindow* w)
 
   this->FrameBufferObject = nullptr;
   this->ColorTexture->ReleaseGraphicsResources(w);
+
+  if (this->OnTopDepthTexture)
+  {
+    this->OnTopDepthTexture->ReleaseGraphicsResources(w);
+    this->OnTopDepthTexture = nullptr;
+  }
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::RenderOnTopProps(
+  vtkRenderer* r, vtkOpenGLRenderWindow* renWin, int width, int height)
+{
+  if (this->MainOnTopProps.empty())
+  {
+    // free the memory if the on top props are not visible anymore
+    if (this->OnTopDepthTexture)
+    {
+      this->OnTopDepthTexture->ReleaseGraphicsResources(renWin);
+      this->OnTopDepthTexture = nullptr;
+    }
+    return;
+  }
+
+  // lazy allocation, only needed with on top props
+  if (!this->OnTopDepthTexture)
+  {
+    this->OnTopDepthTexture = vtkSmartPointer<vtkTextureObject>::New();
+    this->OnTopDepthTexture->SetContext(renWin);
+    this->OnTopDepthTexture->AllocateDepth(width, height, vtkTextureObject::Float32);
+  }
+  this->OnTopDepthTexture->Resize(width, height);
+
+  vtkOpenGLState* ostate = renWin->GetState();
+  const vtkOpenGLState::ScopedglDepthMask dmsaver(ostate);
+  const vtkOpenGLState::ScopedglDepthFunc dfsaver(ostate);
+
+  // swap the depth buffer so the main one is not modified
+  this->FrameBufferObject->AddDepthAttachment(this->OnTopDepthTexture);
+
+  ostate->vtkglEnable(GL_DEPTH_TEST);
+  ostate->vtkglDepthFunc(GL_LEQUAL);
+  ostate->vtkglDepthMask(GL_TRUE);
+  ostate->vtkglClearDepth(1.0);
+  ostate->vtkglClear(GL_DEPTH_BUFFER_BIT);
+
+  for (vtkProp* prop : this->MainOnTopProps)
+  {
+    prop->RenderOpaqueGeometry(r);
+    this->NumberOfRenderedProps++;
+  }
+
+  // restore the main depth buffer
+  this->FrameBufferObject->AddDepthAttachment(this->DepthTexture);
 }
 
 //------------------------------------------------------------------------------
@@ -154,7 +207,7 @@ void vtkF3DMainRenderPass::InitializeResources(
   this->ColorTexture->SetContext(renWin);
   if (!this->ColorTexture->GetHandle())
   {
-    this->ColorTexture->SetInternalFormat(GL_RGBA32F);
+    this->ColorTexture->SetInternalFormat(GL_RGBA16F);
     this->ColorTexture->SetDataType(GL_FLOAT);
     this->ColorTexture->Create2D(width, height, 4, VTK_UNSIGNED_CHAR, false);
   }
@@ -276,13 +329,8 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
 
-  // render "on top" props (depth test disabled)
-  ostate->vtkglDisable(GL_DEPTH_TEST);
-  for (vtkProp* prop : this->MainOnTopProps)
-  {
-    prop->RenderOpaqueGeometry(r);
-    this->NumberOfRenderedProps++;
-  }
+  // render "on top" props, depth tested between themselves only
+  this->RenderOnTopProps(r, renWin, width, height);
 
   ostate->PopFramebufferBindings();
 
