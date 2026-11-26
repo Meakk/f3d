@@ -51,6 +51,7 @@ public:
   vtkSetMacro(UseAnari, bool);
   vtkSetMacro(UseSSAOPass, bool);
   vtkSetMacro(UseBlurBackground, bool);
+  vtkSetMacro(UseToneMappingPass, bool);
   vtkSetMacro(ForceOpaqueBackground, bool);
   vtkSetVector6Macro(Bounds, double);
   vtkSetMacro(CircleOfConfusionRadius, double);
@@ -88,6 +89,7 @@ protected:
   std::string AnariLibrary = "environment";
   bool UseSSAOPass = false;
   bool UseBlurBackground = false;
+  bool UseToneMappingPass = false;
   bool ForceOpaqueBackground = false;
   bool RenderReflection = false;
   bool XRMode = false;

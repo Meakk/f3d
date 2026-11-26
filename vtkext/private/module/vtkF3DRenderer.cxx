@@ -80,7 +80,6 @@
 #include <vtkTextActor.h>
 #include <vtkTextProperty.h>
 #include <vtkTextureObject.h>
-#include <vtkToneMappingPass.h>
 #include <vtkTransform.h>
 #include <vtkTransformFilter.h>
 #include <vtkUniforms.h>
@@ -537,6 +536,7 @@ void vtkF3DRenderer::ConfigureRenderPasses()
 #endif
   newPass->SetUseSSAOPass(this->UseSSAOPass);
   newPass->SetUseBlurBackground(this->UseBlurBackground);
+  newPass->SetUseToneMappingPass(this->UseToneMappingPass);
   newPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
   newPass->SetForceOpaqueBackground(this->HDRISkyboxVisible);
   newPass->SetArmatureVisible(this->ArmatureVisible);
@@ -575,14 +575,6 @@ void vtkF3DRenderer::ConfigureRenderPasses()
     ssaaP->SetColorFormat(vtkTextureObject::Float16);
     ssaaP->SetDelegatePass(renderingPass);
     renderingPass = ssaaP;
-  }
-
-  if (this->UseToneMappingPass)
-  {
-    vtkNew<vtkToneMappingPass> toneP;
-    toneP->SetToneMappingType(vtkToneMappingPass::NeutralPBR);
-    toneP->SetDelegatePass(renderingPass);
-    renderingPass = toneP;
   }
 
   if (this->AntiAliasingModeEnabled == vtkF3DRenderer::AntiAliasingMode::FXAA)

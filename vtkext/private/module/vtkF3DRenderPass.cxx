@@ -49,7 +49,6 @@
 
 #include <vtkSkybox.h>
 #include <vtkTextureObject.h>
-#include <vtkToneMappingPass.h>
 #include <vtkTranslucentPass.h>
 #include <vtkUniforms.h>
 #include <vtkVersion.h>
@@ -77,6 +76,7 @@ void vtkF3DRenderPass::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "UseAnari: " << this->UseAnari << "\n";
   os << indent << "UseSSAOPass: " << this->UseSSAOPass << "\n";
   os << indent << "UseBlurBackground: " << this->UseBlurBackground << "\n";
+  os << indent << "UseToneMappingPass: " << this->UseToneMappingPass << "\n";
   os << indent << "ForceOpaqueBackground: " << this->ForceOpaqueBackground << "\n";
 }
 
@@ -324,6 +324,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 
   // post-process pass
   this->PostprocessPass = vtkSmartPointer<vtkF3DPostprocessRenderPass>::New();
+  this->PostprocessPass->SetUseToneMapping(this->UseToneMappingPass);
   this->PostprocessPass->SetColorInputIsLinear(!renderer || !renderer->GetSRGBBlending());
 
   this->InitializeTime = this->GetMTime();

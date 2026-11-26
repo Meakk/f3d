@@ -71,6 +71,12 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
   {
     std::string fsShader = vtkF3DPostprocessFS;
 
+    if (this->UseToneMapping)
+    {
+      vtkShaderProgram::Substitute(
+        fsShader, "//#define ENABLE_TONEMAPPING", "#define ENABLE_TONEMAPPING");
+    }
+
     if (!this->ColorInputIsLinear)
     {
       vtkShaderProgram::Substitute(fsShader, "//VTK::ColorSpace::Impl",

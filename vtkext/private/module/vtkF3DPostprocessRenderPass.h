@@ -35,6 +35,9 @@ public:
   vtkSetMacro(ColorInputIsLinear, bool);
   vtkGetMacro(ColorInputIsLinear, bool);
 
+  vtkSetMacro(UseToneMapping, bool);
+  vtkGetMacro(UseToneMapping, bool);
+
   ///@{
   /**
    * Set/Get the color texture to draw. Nothing is rendered without it.
@@ -72,6 +75,7 @@ protected:
   vtkTextureObject* NormalTexture = nullptr;
 
   bool ColorInputIsLinear = true;
+  bool UseToneMapping = false;
 
   std::shared_ptr<vtkOpenGLQuadHelper> QuadHelper;
 };
