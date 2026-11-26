@@ -10,12 +10,10 @@
 #include "vtkF3DDisplayDepthRenderPass.h"
 #include "vtkF3DInteractorStyle.h"
 #include "vtkF3DOpenGLGridMapper.h"
-#include "vtkF3DOverlayRenderPass.h"
 #include "vtkF3DPointSplatMapper.h"
 #include "vtkF3DPointSplatUtilsSDF.h"
 #include "vtkF3DPolyDataMapper.h"
 #include "vtkF3DRenderPass.h"
-#include "vtkF3DSolidBackgroundPass.h"
 #include "vtkF3DUserRenderPass.h"
 
 #include <vtkActor.h>
@@ -2599,17 +2597,9 @@ void vtkF3DRenderer::UpdateActors()
 //----------------------------------------------------------------------------
 bool vtkF3DRenderer::CaptureVideoFrame(std::byte* yPlane, std::byte* uPlane, std::byte* vPlane)
 {
-  // Use the final rendered texture as input for the frame capture
-  vtkF3DOverlayRenderPass* overlayPass = vtkF3DOverlayRenderPass::SafeDownCast(this->GetPass());
+  vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(this->RenderWindow);
 
-  if (overlayPass == nullptr)
-  {
-    F3DLog::Print(
-      F3DLog::Severity::Error, "Cannot capture video frame: renderer is not initialized");
-    return false;
-  }
-
-  this->FrameCapture->SetInputTexture(overlayPass->GetColorTexture());
+  this->FrameCapture->SetInputTexture(renWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0));
   this->FrameCapture->Capture(this, yPlane, uPlane, vPlane);
   return true;
 }

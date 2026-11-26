@@ -94,7 +94,6 @@ set(classes
   vtkF3DNoRenderWindow
   vtkF3DObjectFactory
   vtkF3DOpenGLGridMapper
-  vtkF3DOverlayRenderPass
   vtkF3DPointSplatMapper
   vtkF3DPolyDataMapper
   vtkF3DPostProcessFilter
@@ -103,7 +102,6 @@ set(classes
   vtkF3DRenderPass
   vtkF3DRenderer
   vtkF3DSkinningMorphingPass
-  vtkF3DSolidBackgroundPass
   vtkF3DStochasticTransparentPass
   vtkF3DUIObserver
   vtkF3DUIActor
