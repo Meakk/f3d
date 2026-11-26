@@ -14,7 +14,6 @@
 #include "vtkF3DPointSplatUtilsSDF.h"
 #include "vtkF3DPolyDataMapper.h"
 #include "vtkF3DRenderPass.h"
-#include "vtkF3DUserRenderPass.h"
 
 #include <vtkActor.h>
 #include <vtkActorCollection.h>
@@ -533,6 +532,20 @@ void vtkF3DRenderer::ConfigureRenderPasses()
   newPass->SetUseSSAOPass(this->UseSSAOPass);
   newPass->SetUseBlurBackground(this->UseBlurBackground);
   newPass->SetUseToneMappingPass(this->UseToneMappingPass);
+
+  if (this->FinalShader.has_value())
+  {
+    // basic validation
+    if (this->FinalShader.value().find("pixel") != std::string::npos)
+    {
+      newPass->SetUserShader(this->FinalShader.value());
+    }
+    else
+    {
+      F3DLog::Print(
+        F3DLog::Severity::Warning, "Final shader must define a function named \"pixel\"");
+    }
+  }
   newPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
   newPass->SetForceOpaqueBackground(this->HDRISkyboxVisible);
   newPass->SetArmatureVisible(this->ArmatureVisible);
@@ -563,23 +576,6 @@ void vtkF3DRenderer::ConfigureRenderPasses()
       depthP->SetColorMap(this->ColorTransferFunction);
     }
     renderingPass = depthP;
-  }
-
-  if (this->FinalShader.has_value())
-  {
-    // basic validation
-    if (this->FinalShader.value().find("pixel") != std::string::npos)
-    {
-      vtkNew<vtkF3DUserRenderPass> userP;
-      userP->SetUserShader(this->FinalShader.value().c_str());
-      userP->SetDelegatePass(renderingPass);
-      renderingPass = userP;
-    }
-    else
-    {
-      F3DLog::Print(
-        F3DLog::Severity::Warning, "Final shader must define a function named \"pixel\"");
-    }
   }
 
   this->SetPass(renderingPass);

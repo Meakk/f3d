@@ -93,11 +93,9 @@ Here's a raw overview of the render passes:
 ```mermaid
 graph TD
 
-    SSAA --> rp
-    ToneMapping --> SSAA
-    BlendBackground["Blend background\n(if no skybox)"] --> ToneMapping
-    FXAA --> BlendBackground
-    FinalShader --> FXAA
+    Overlay["Overlay\n(2D props, UI)"] --> FXAA
+    FXAA --> Postprocess["Post-process\n(SSAA resolve, tone mapping, final shader)"]
+    Postprocess --> rp
 
     subgraph rp[F3D Render Pass]
         direction LR
@@ -124,7 +122,7 @@ graph TD
     end
 
     classDef optional stroke-dasharray: 5 5
-    class Blur,Reflection,TAA,SSAO,Translucency,SSAA,ToneMapping,FXAA,FinalShader optional
+    class Blur,Reflection,TAA,SSAO,Translucency,FXAA optional
 ```
 
 - A dashed node means it's optional, in which case it's just a passthrough to the next node.

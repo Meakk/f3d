@@ -53,6 +53,7 @@ public:
   vtkSetMacro(UseSSAOPass, bool);
   vtkSetMacro(UseBlurBackground, bool);
   vtkSetMacro(UseToneMappingPass, bool);
+  vtkSetMacro(UserShader, std::string);
   vtkSetMacro(ForceOpaqueBackground, bool);
   vtkSetVector6Macro(Bounds, double);
   vtkSetMacro(CircleOfConfusionRadius, double);
@@ -91,6 +92,7 @@ protected:
   bool UseSSAOPass = false;
   bool UseBlurBackground = false;
   bool UseToneMappingPass = false;
+  std::string UserShader;
   bool ForceOpaqueBackground = false;
   bool RenderReflection = false;
   bool XRMode = false;

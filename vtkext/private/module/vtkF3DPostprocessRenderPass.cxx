@@ -1,7 +1,7 @@
 #include "vtkF3DPostprocessRenderPass.h"
 
-#include "vtkF3DRenderer.h"
 #include "vtkF3DPostprocessFS.h"
+#include "vtkF3DRenderer.h"
 
 #include <vtkObjectFactory.h>
 #include <vtkOpenGLError.h>
@@ -77,6 +77,17 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
         fsShader, "//#define ENABLE_TONEMAPPING", "#define ENABLE_TONEMAPPING");
     }
 
+    if (!this->UserShader.empty())
+    {
+      vtkShaderProgram::Substitute(fsShader, "//VTK::User::Dec", this->UserShader);
+    }
+    else
+    {
+      constexpr std::string_view defaultFunction =
+        "vec4 pixel(vec2 uv) { return getLinearColor(uv); }";
+      vtkShaderProgram::Substitute(fsShader, "//VTK::User::Dec", defaultFunction.data());
+    }
+
     if (this->ResolutionScale > 1.0)
     {
       vtkShaderProgram::Substitute(fsShader, "//#define ENABLE_SSAA", "#define ENABLE_SSAA");
@@ -84,8 +95,8 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
 
     if (!this->ColorInputIsLinear)
     {
-      vtkShaderProgram::Substitute(fsShader, "//VTK::ColorSpace::Impl",
-        "  color.rgb = pow(color.rgb, vec3(2.2));\n");
+      vtkShaderProgram::Substitute(
+        fsShader, "//VTK::ColorSpace::Impl", "  color.rgb = pow(color.rgb, vec3(2.2));\n");
     }
 
     this->QuadHelper = std::make_shared<vtkOpenGLQuadHelper>(renWin,

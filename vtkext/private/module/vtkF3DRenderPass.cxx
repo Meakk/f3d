@@ -346,6 +346,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   }
   this->PostprocessPass->SetResolutionScale(scale);
 
+  this->PostprocessPass->SetUserShader(this->UserShader);
   this->PostprocessPass->SetUseToneMapping(this->UseToneMappingPass);
   this->PostprocessPass->SetColorInputIsLinear(!renderer || !renderer->GetSRGBBlending());
 
