@@ -172,7 +172,7 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
   ostate->vtkglViewport(0, 0, width, height);
   ostate->vtkglScissor(0, 0, width, height);
 
-  vtkCamera* originalCam = r->GetActiveCamera();
+  const vtkSmartPointer<vtkCamera> originalCam = r->GetActiveCamera();
   const vtkNew<vtkCamera> reflectedCam;
   this->ReflectCamera(originalCam, reflectedCam);
   r->SetActiveCamera(reflectedCam);

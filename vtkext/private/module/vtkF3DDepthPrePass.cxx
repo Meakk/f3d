@@ -195,6 +195,7 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
     ostate->vtkglDisable(GL_BLEND);
     ostate->vtkglEnable(GL_DEPTH_TEST);
 
+    ostate->vtkglDepthMask(GL_TRUE);
     ostate->vtkglClearColor(0.0, 0.0, 0.0, 0.0);
     ostate->vtkglClearDepth(1.0);
     ostate->vtkglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
