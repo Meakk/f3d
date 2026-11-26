@@ -66,6 +66,11 @@ public:
    */
   vtkTextureObject* GetDepthTexture() const { return this->DepthTexture; }
 
+  /**
+   * Set the scale applied to the rendering resolution, used for supersampling.
+   */
+  vtkSetMacro(ResolutionScale, double);
+
   vtkF3DReflectionRenderPass(const vtkF3DReflectionRenderPass&) = delete;
   void operator=(const vtkF3DReflectionRenderPass&) = delete;
 
@@ -82,6 +87,7 @@ protected:
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
 
   vtkSmartPointer<vtkRenderPass> DelegatePass;
+  double ResolutionScale = 1.0;
   vtkSmartPointer<vtkMatrix4x4> ReflectionMatrix;
 
   std::vector<vtkProp*> ReflectedProps;

@@ -120,6 +120,11 @@ public:
   vtkTextureObject* GetDepthTexture() const { return this->DepthTexture; }
   void SetDepthTexture(vtkTextureObject* depthTexture);
 
+  /**
+   * Set the scale applied to the rendering resolution, used for supersampling.
+   */
+  vtkSetMacro(ResolutionScale, double);
+
   vtkF3DMainRenderPass(const vtkF3DMainRenderPass&) = delete;
   void operator=(const vtkF3DMainRenderPass&) = delete;
 
@@ -137,6 +142,7 @@ protected:
   vtkSmartPointer<vtkF3DReflectionRenderPass> ReflectionPass;
   vtkSmartPointer<vtkRenderPass> BackgroundPass;
 
+  double ResolutionScale = 1.0;
   bool ArmatureVisible = false;
   bool UseRaytracing = false;
   bool UseBlurBackground = false;

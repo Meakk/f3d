@@ -23,6 +23,8 @@
 #include <vtkSkybox.h>
 #include <vtkTextureObject.h>
 
+#include <cmath>
+
 vtkStandardNewMacro(vtkF3DMainRenderPass);
 
 //------------------------------------------------------------------------------
@@ -214,6 +216,9 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
     height = size[1];
   }
 
+  width = static_cast<int>(std::lround(width * this->ResolutionScale));
+  height = static_cast<int>(std::lround(height * this->ResolutionScale));
+
   this->InitializeResources(renWin, width, height);
 
   this->FilterProps(s);
@@ -229,12 +234,18 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
     this->ReflectionPass->Render(&reflState);
   }
 
+  // StartNonOrtho does not set the viewport, which can be larger than the window with supersampling
+  const vtkOpenGLState::ScopedglViewport viewportSaver(ostate);
+  const vtkOpenGLState::ScopedglScissor scissorSaver(ostate);
+
   ostate->PushFramebufferBindings();
 
   this->FrameBufferObject->Bind();
   this->FrameBufferObject->AddColorAttachment(0, this->ColorTexture);
   this->FrameBufferObject->AddDepthAttachment(this->DepthTexture);
   this->FrameBufferObject->StartNonOrtho(width, height);
+  ostate->vtkglViewport(0, 0, width, height);
+  ostate->vtkglScissor(0, 0, width, height);
 
   ostate->vtkglEnable(GL_BLEND);
   ostate->vtkglBlendFuncSeparate(

@@ -35,6 +35,11 @@ public:
   vtkSetMacro(ColorInputIsLinear, bool);
   vtkGetMacro(ColorInputIsLinear, bool);
 
+  /**
+   * Set the resolution scale of the input textures, if above 1 the color is downsampled (SSAA).
+   */
+  vtkSetMacro(ResolutionScale, double);
+
   vtkSetMacro(UseToneMapping, bool);
   vtkGetMacro(UseToneMapping, bool);
 
@@ -76,6 +81,7 @@ protected:
 
   bool ColorInputIsLinear = true;
   bool UseToneMapping = false;
+  double ResolutionScale = 1.0;
 
   std::shared_ptr<vtkOpenGLQuadHelper> QuadHelper;
 };

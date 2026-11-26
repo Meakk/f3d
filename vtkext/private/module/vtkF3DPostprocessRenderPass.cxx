@@ -77,6 +77,11 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
         fsShader, "//#define ENABLE_TONEMAPPING", "#define ENABLE_TONEMAPPING");
     }
 
+    if (this->ResolutionScale > 1.0)
+    {
+      vtkShaderProgram::Substitute(fsShader, "//#define ENABLE_SSAA", "#define ENABLE_SSAA");
+    }
+
     if (!this->ColorInputIsLinear)
     {
       vtkShaderProgram::Substitute(fsShader, "//VTK::ColorSpace::Impl",
@@ -113,6 +118,7 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
   }
 
   this->QuadHelper->Program->SetUniform2i("resolution", renWin->GetSize());
+  this->QuadHelper->Program->SetUniformf("ssaaScale", static_cast<float>(this->ResolutionScale));
 
   if (!ren)
   {

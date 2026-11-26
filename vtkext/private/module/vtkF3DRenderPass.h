@@ -29,6 +29,7 @@ class vtkF3DPostprocessRenderPass;
 class vtkF3DMainRenderPass;
 class vtkF3DReflectionRenderPass;
 class vtkDefaultPass;
+class vtkOpenGLFXAAPass;
 class vtkTextureObject;
 class vtkCamera;
 class vtkInformationIntegerKey;
@@ -104,6 +105,7 @@ protected:
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;
   vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
+  vtkSmartPointer<vtkOpenGLFXAAPass> FXAAPass;
 
   // depth texture reused in many passes
   vtkSmartPointer<vtkTextureObject> DepthTexture;

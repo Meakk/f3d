@@ -66,6 +66,11 @@ public:
   bool PostReplaceShaderValues(std::string& vertexShader, std::string& geometryShader,
     std::string& fragmentShader, vtkAbstractMapper* mapper, vtkProp* prop) override;
 
+  /**
+   * Set the scale applied to the rendering resolution, used for supersampling.
+   */
+  vtkSetMacro(ResolutionScale, double);
+
   vtkF3DDepthPrePass(const vtkF3DDepthPrePass&) = delete;
   void operator=(const vtkF3DDepthPrePass&) = delete;
 
@@ -82,6 +87,7 @@ protected:
   vtkSmartPointer<vtkRenderPass> DelegatePass;
 
   std::vector<vtkProp*> OpaqueProps;
+  double ResolutionScale = 1.0;
 };
 
 #endif

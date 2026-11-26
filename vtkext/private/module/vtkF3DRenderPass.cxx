@@ -25,6 +25,7 @@
 #include <vtkMatrix4x4.h>
 #include <vtkObjectFactory.h>
 #include <vtkOpaquePass.h>
+#include <vtkOpenGLFXAAPass.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderUtilities.h>
 #include <vtkOpenGLRenderWindow.h>
@@ -98,6 +99,10 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   if (this->MainPass)
   {
     this->MainPass->ReleaseGraphicsResources(w);
+  }
+  if (this->FXAAPass)
+  {
+    this->FXAAPass->ReleaseGraphicsResources(w);
   }
 }
 
@@ -324,8 +329,30 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 
   // post-process pass
   this->PostprocessPass = vtkSmartPointer<vtkF3DPostprocessRenderPass>::New();
+  this->FXAAPass = nullptr;
+
+  // FXAA wraps the post-process pass only, before the overlay
+  if (renderer && renderer->GetAntiAliasingMode() == vtkF3DRenderer::AntiAliasingMode::FXAA)
+  {
+    this->FXAAPass = vtkSmartPointer<vtkOpenGLFXAAPass>::New();
+  }
+
+  const double scale = renderer ? renderer->GetScreenSpaceScaling() : 1.0;
+  this->DepthPrePass->SetResolutionScale(scale);
+  this->MainPass->SetResolutionScale(scale);
+  if (this->BakeReflectionPass)
+  {
+    this->BakeReflectionPass->SetResolutionScale(scale);
+  }
+  this->PostprocessPass->SetResolutionScale(scale);
+
   this->PostprocessPass->SetUseToneMapping(this->UseToneMappingPass);
   this->PostprocessPass->SetColorInputIsLinear(!renderer || !renderer->GetSRGBBlending());
+
+  if (this->FXAAPass)
+  {
+    this->FXAAPass->SetDelegatePass(this->PostprocessPass);
+  }
 
   this->InitializeTime = this->GetMTime();
 }
@@ -469,7 +496,14 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
   this->PostprocessPass->SetColorTexture(this->MainPass->GetColorTexture());
   this->PostprocessPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());
   this->PostprocessPass->SetNormalTexture(this->DepthPrePass->GetNormalTexture());
-  this->PostprocessPass->Render(s);
+  if (this->FXAAPass)
+  {
+    this->FXAAPass->Render(s);
+  }
+  else
+  {
+    this->PostprocessPass->Render(s);
+  }
 
   std::vector<vtkProp*> overlayProps;
   vtkProp* const* props = s->GetPropArray();

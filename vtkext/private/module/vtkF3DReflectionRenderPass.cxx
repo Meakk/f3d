@@ -16,6 +16,8 @@
 #include <vtkRenderer.h>
 #include <vtkTextureObject.h>
 
+#include <cmath>
+
 vtkStandardNewMacro(vtkF3DReflectionRenderPass);
 
 //------------------------------------------------------------------------------
@@ -133,6 +135,9 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
     height = size[1];
   }
 
+  width = static_cast<int>(std::lround(width * this->ResolutionScale));
+  height = static_cast<int>(std::lround(height * this->ResolutionScale));
+
   this->InitializeResources(renWin, width, height);
 
   // the grid must not be reflected
@@ -154,12 +159,18 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
     this->ReflectedProps.data(), static_cast<int>(this->ReflectedProps.size()));
   s2.SetFrameBuffer(fbo);
 
+  // StartNonOrtho does not set the viewport, which can be larger than the window with supersampling
+  const vtkOpenGLState::ScopedglViewport viewportSaver(ostate);
+  const vtkOpenGLState::ScopedglScissor scissorSaver(ostate);
+
   ostate->PushFramebufferBindings();
 
   fbo->Bind();
   fbo->AddColorAttachment(0, this->ColorTexture);
   fbo->AddDepthAttachment(this->DepthTexture);
   fbo->StartNonOrtho(width, height);
+  ostate->vtkglViewport(0, 0, width, height);
+  ostate->vtkglScissor(0, 0, width, height);
 
   vtkCamera* originalCam = r->GetActiveCamera();
   const vtkNew<vtkCamera> reflectedCam;

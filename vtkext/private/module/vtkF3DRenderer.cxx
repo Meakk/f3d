@@ -51,7 +51,6 @@
 #include <vtkMultiBlockDataSet.h>
 #include <vtkObjectFactory.h>
 #include <vtkOpaquePass.h>
-#include <vtkOpenGLFXAAPass.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkOpenGLRenderer.h>
@@ -69,7 +68,6 @@
 #include <vtkProperty.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkSSAAPass.h>
 #include <vtkScalarBarActor.h>
 #include <vtkShaderProperty.h>
 #include <vtkShadowMapBakerPass.h>
@@ -567,21 +565,6 @@ void vtkF3DRenderer::ConfigureRenderPasses()
       depthP->SetColorMap(this->ColorTransferFunction);
     }
     renderingPass = depthP;
-  }
-
-  if (this->AntiAliasingModeEnabled == vtkF3DRenderer::AntiAliasingMode::SSAA)
-  {
-    vtkNew<vtkSSAAPass> ssaaP;
-    ssaaP->SetColorFormat(vtkTextureObject::Float16);
-    ssaaP->SetDelegatePass(renderingPass);
-    renderingPass = ssaaP;
-  }
-
-  if (this->AntiAliasingModeEnabled == vtkF3DRenderer::AntiAliasingMode::FXAA)
-  {
-    vtkNew<vtkOpenGLFXAAPass> fxaaP;
-    fxaaP->SetDelegatePass(renderingPass);
-    renderingPass = fxaaP;
   }
 
   if (this->FinalShader.has_value())

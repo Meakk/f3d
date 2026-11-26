@@ -11,7 +11,41 @@ uniform sampler2D texNormal;
 uniform ivec2 resolution;
 uniform float time;
 
+uniform float ssaaScale;
+
 //#define ENABLE_TONEMAPPING
+//#define ENABLE_SSAA
+
+#ifdef ENABLE_SSAA
+// Gaussian downsampling of the supersampled color texture
+vec4 sampleColor(vec2 uv)
+{
+  ivec2 srcSize = textureSize(texColor, 0);
+  vec2 center = uv * vec2(srcSize);
+  ivec2 base = ivec2(floor(center));
+  int radius = int(ceil(ssaaScale));
+
+  vec4 sum = vec4(0.0);
+  float weightSum = 0.0;
+  for (int j = -radius; j <= radius; j++)
+  {
+    for (int i = -radius; i <= radius; i++)
+    {
+      ivec2 texel = clamp(base + ivec2(i, j), ivec2(0), srcSize - 1);
+      vec2 d = (vec2(texel) + 0.5 - center) / ssaaScale;
+      float w = exp(-2.0 * dot(d, d));
+      sum += w * texelFetch(texColor, texel, 0);
+      weightSum += w;
+    }
+  }
+  return sum / weightSum;
+}
+#else
+vec4 sampleColor(vec2 uv)
+{
+  return texture(texColor, uv);
+}
+#endif
 
 // Khronos neutral tonemapping function
 vec3 tonemap(vec3 color)
@@ -35,7 +69,7 @@ vec3 tonemap(vec3 color)
 
 vec4 getLinearColor(vec2 uv)
 {
-  vec4 color = texture(texColor, uv);
+  vec4 color = sampleColor(uv);
   if (color.a > 0.0)
     color.rgb /= color.a;
 
