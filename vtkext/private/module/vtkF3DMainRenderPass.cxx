@@ -28,7 +28,6 @@ vtkStandardNewMacro(vtkF3DMainRenderPass);
 //------------------------------------------------------------------------------
 vtkF3DMainRenderPass::vtkF3DMainRenderPass()
   : ColorTexture(vtkSmartPointer<vtkTextureObject>::New())
-  , DepthTexture(vtkSmartPointer<vtkTextureObject>::New())
 {
 }
 
@@ -40,7 +39,6 @@ void vtkF3DMainRenderPass::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
   os << indent << "ColorTexture: " << this->ColorTexture << "\n";
-  os << indent << "DepthTexture: " << this->DepthTexture << "\n";
 }
 
 //------------------------------------------------------------------------------
@@ -127,19 +125,30 @@ void vtkF3DMainRenderPass::FilterProps(const vtkRenderState* s)
 }
 
 //------------------------------------------------------------------------------
+void vtkF3DMainRenderPass::SetDepthTexture(vtkTextureObject* depthTexture)
+{
+  if (this->DepthTexture != depthTexture)
+  {
+    this->DepthTexture = depthTexture;
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
 void vtkF3DMainRenderPass::ReleaseGraphicsResources(vtkWindow* w)
 {
   this->Superclass::ReleaseGraphicsResources(w);
 
   this->FrameBufferObject = nullptr;
   this->ColorTexture->ReleaseGraphicsResources(w);
-  this->DepthTexture->ReleaseGraphicsResources(w);
 }
 
 //------------------------------------------------------------------------------
 void vtkF3DMainRenderPass::InitializeResources(
   vtkOpenGLRenderWindow* renWin, int width, int height)
 {
+  assert(this->DepthTexture);
+
   this->ColorTexture->SetContext(renWin);
   if (!this->ColorTexture->GetHandle())
   {
@@ -148,19 +157,6 @@ void vtkF3DMainRenderPass::InitializeResources(
     this->ColorTexture->Create2D(width, height, 4, VTK_UNSIGNED_CHAR, false);
   }
   this->ColorTexture->Resize(width, height);
-
-  this->DepthTexture->SetContext(renWin);
-  if (!this->DepthTexture->GetHandle())
-  {
-    // Needed because VTK can pick the wrong format with certain drivers
-#ifdef F3D_USE_GLES
-    // Fixed32 not supported on GLES
-    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Fixed24);
-#else
-    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Fixed32);
-#endif
-  }
-  this->DepthTexture->Resize(width, height);
 
   if (!this->FrameBufferObject)
   {
@@ -199,6 +195,7 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
   vtkOpenGLState* ostate = renWin->GetState();
 
+  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
   const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   int width = 0;
@@ -243,20 +240,30 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   ostate->vtkglBlendFuncSeparate(
     GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-  r->Clear();
+  // do not clear the depth buffer, it comes from the prepass
+  ostate->vtkglClearColor(0.0, 0.0, 0.0, 0.0);
+  ostate->vtkglClear(GL_COLOR_BUFFER_BIT);
 
   vtkRenderState s2(s->GetRenderer());
   s2.SetFrameBuffer(this->FrameBufferObject);
+
+  // TODO: if TAA only?
+  ostate->vtkglDisable(GL_DEPTH_TEST);
+
+  // render skybox
+  // will use the depth buffer from the prepass to limit overdraw
+  // must be run first for proper compositing with the main translucent props
+  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
+  this->BackgroundPass->Render(&s2);
+  this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
+
+  ostate->vtkglEnable(GL_DEPTH_TEST);
+  ostate->vtkglEnable(GL_BLEND);
 
   // render main props
   s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps += this->DelegatePass->GetNumberOfRenderedProps();
-
-  // render skybox
-  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
-  this->BackgroundPass->Render(&s2);
-  this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
 
   // render "on top" props (depth test disabled)
   ostate->vtkglDisable(GL_DEPTH_TEST);

@@ -14,6 +14,7 @@
 #include "vtkF3DStochasticTransparentPass.h"
 #include "vtkF3DTAAPass.h"
 
+#include <vtkOverlayPass.h>
 #include <vtkBoundingBox.h>
 #include <vtkCamera.h>
 #include <vtkCameraPass.h>
@@ -111,11 +112,19 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 
   vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(s->GetRenderer());
   vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(glRenderer);
+  vtkOpenGLRenderWindow* glRenderWindow = vtkOpenGLRenderWindow::SafeDownCast(glRenderer->GetRenderWindow());
 
-  this->ReleaseGraphicsResources(glRenderer->GetRenderWindow());
+  int* size = glRenderer->GetSize();
+
+  this->ReleaseGraphicsResources(glRenderWindow);
+
+  this->DepthTexture = vtkSmartPointer<vtkTextureObject>::New();
+  this->DepthTexture->SetContext(glRenderWindow);
+  this->DepthTexture->AllocateDepth(size[0], size[1], vtkTextureObject::Float32);
 
   // depth pre-pass, write normals and depth of opaque actors
   this->DepthPrePass = vtkSmartPointer<vtkF3DDepthPrePass>::New();
+  this->DepthPrePass->SetDepthTexture(this->DepthTexture);
 
   const vtkNew<vtkOpaquePass> depthOpaqueP;
 
@@ -124,12 +133,16 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 
   this->DepthPrePass->SetDelegatePass(depthSkinningMorphingP);
 
+  // overlay pass
+  this->OverlayPass = vtkSmartPointer<vtkOverlayPass>::New();
+
   // main pass
   this->MainPass = vtkSmartPointer<vtkF3DMainRenderPass>::New();
   this->MainPass->SetArmatureVisible(this->ArmatureVisible);
   this->MainPass->SetUseRaytracing(this->UseRaytracing);
   this->MainPass->SetUseBlurBackground(this->UseBlurBackground);
   this->MainPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
+  this->MainPass->SetDepthTexture(this->DepthTexture);
 
 #if F3D_MODULE_RAYTRACING
   if (this->UseRaytracing)
@@ -456,6 +469,8 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
   this->PostprocessPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());
   this->PostprocessPass->SetNormalTexture(this->DepthPrePass->GetNormalTexture());
   this->PostprocessPass->Render(s);
+
+  this->OverlayPass->Render(s);
 
   this->NumberOfRenderedProps = this->MainPass->GetNumberOfRenderedProps();
 

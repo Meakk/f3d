@@ -18,8 +18,8 @@ vtkStandardNewMacro(vtkF3DDepthPrePass);
 
 namespace
 {
-const char* const OCTAHEDRAL_ENCODE =
-  "vec2 f3dOctahedralEncode(vec3 n)\n"
+constexpr std::string_view OCTAHEDRAL_ENCODE =
+  "vec2 octahedralEncode(vec3 n)\n"
   "{\n"
   "  n /= (abs(n.x) + abs(n.y) + abs(n.z));\n"
   "  vec2 e = n.xy;\n"
@@ -84,22 +84,21 @@ void vtkF3DDepthPrePass::InitializeResources(vtkOpenGLRenderWindow* renWin, int 
   }
   this->NormalTexture->Resize(width, height);
 
-  if (!this->DepthTexture)
-  {
-    this->DepthTexture = vtkSmartPointer<vtkTextureObject>::New();
-  }
-  this->DepthTexture->SetContext(renWin);
-  if (!this->DepthTexture->GetHandle())
-  {
-    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Fixed24);
-  }
-  this->DepthTexture->Resize(width, height);
-
   if (!this->FrameBufferObject)
   {
     this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
   }
   this->FrameBufferObject->SetContext(renWin);
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DDepthPrePass::SetDepthTexture(vtkTextureObject* depthTexture)
+{
+  if (this->DepthTexture != depthTexture)
+  {
+    this->DepthTexture = depthTexture;
+    this->Modified();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -118,6 +117,9 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
   vtkRenderer* r = s->GetRenderer();
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
   vtkOpenGLState* ostate = renWin->GetState();
+
+  vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
+  vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   int width = 0;
   int height = 0;
@@ -175,9 +177,6 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
 
     ostate->vtkglDisable(GL_BLEND);
     ostate->vtkglEnable(GL_DEPTH_TEST);
-    ostate->vtkglDepthMask(GL_TRUE);
-    ostate->vtkglDepthFunc(GL_LEQUAL);
-    ostate->vtkglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     ostate->vtkglClearColor(0.0, 0.0, 0.0, 0.0);
     ostate->vtkglClearDepth(1.0);
@@ -210,14 +209,14 @@ bool vtkF3DDepthPrePass::PostReplaceShaderValues(std::string&, std::string&,
   }
 
   vtkShaderProgram::Substitute(fragmentShader, "//VTK::System::Dec",
-    std::string("//VTK::System::Dec\n") + OCTAHEDRAL_ENCODE, false);
+    std::string("//VTK::System::Dec\n") + OCTAHEDRAL_ENCODE.data(), false);
 
   // normalVCVSOutput is only defined when lighting is enabled
   const bool hasNormal = fragmentShader.find("vec3 normalVCVSOutput") != std::string::npos;
   const std::string normal = hasNormal ? "normalize(normalVCVSOutput)" : "vec3(0.0, 0.0, 1.0)";
 
   vtkShaderProgram::Substitute(fragmentShader, outputToken,
-    "  gl_FragData[0] = vec4(f3dOctahedralEncode(" + normal + "), 0.0, 1.0);\n  " + outputToken +
+    "  gl_FragData[0] = vec4(octahedralEncode(" + normal + "), 0.0, 1.0);\n  " + outputToken +
       "\n",
     false);
 
@@ -236,9 +235,5 @@ void vtkF3DDepthPrePass::ReleaseGraphicsResources(vtkWindow* w)
   if (this->NormalTexture)
   {
     this->NormalTexture->ReleaseGraphicsResources(w);
-  }
-  if (this->DepthTexture)
-  {
-    this->DepthTexture->ReleaseGraphicsResources(w);
   }
 }

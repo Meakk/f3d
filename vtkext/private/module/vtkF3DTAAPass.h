@@ -80,10 +80,13 @@ private:
 
   vtkSmartPointer<vtkRenderPass> DelegatePass;
   vtkSmartPointer<vtkOpenGLFramebufferObject> FrameBufferObject;
+  vtkSmartPointer<vtkOpenGLFramebufferObject> AccumulateFrameBufferObject;
   vtkSmartPointer<vtkTextureObject> ColorTexture;
   vtkSmartPointer<vtkTextureObject> HistoryTexture;
+  vtkSmartPointer<vtkTextureObject> ResultTexture;
 
   std::shared_ptr<vtkOpenGLQuadHelper> QuadHelper;
+  std::shared_ptr<vtkOpenGLQuadHelper> ResultQuadHelper;
 
   int HistoryIteration = 0;
   float Jitter[2] = { 0.0f, 0.0f };

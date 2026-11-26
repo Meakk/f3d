@@ -22,13 +22,14 @@
 #include <vtkTimeStamp.h>
 
 #include <memory>
-#include <vector>
 
 class vtkActor;
 class vtkF3DDepthPrePass;
 class vtkF3DPostprocessRenderPass;
 class vtkF3DMainRenderPass;
 class vtkF3DReflectionRenderPass;
+class vtkOverlayPass;
+class vtkTextureObject;
 class vtkCamera;
 class vtkInformationIntegerKey;
 class vtkAbstractMapper;
@@ -96,10 +97,14 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
+  vtkSmartPointer<vtkOverlayPass> OverlayPass;
   vtkSmartPointer<vtkF3DPostprocessRenderPass> PostprocessPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;
   vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
+
+  // depth texture reused in many passes
+  vtkSmartPointer<vtkTextureObject> DepthTexture;
 
   double Bounds[6] = {};
 

@@ -609,13 +609,6 @@ void vtkF3DRenderer::ConfigureRenderPasses()
     }
   }
 
-  if (!this->UseXR)
-  {
-    vtkNew<vtkF3DOverlayRenderPass> overlayP;
-    overlayP->SetDelegatePass(renderingPass);
-    renderingPass = overlayP;
-  }
-
   this->SetPass(renderingPass);
 
 #if F3D_MODULE_RAYTRACING

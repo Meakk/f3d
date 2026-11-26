@@ -118,6 +118,7 @@ public:
    * Get the depth texture.
    */
   vtkTextureObject* GetDepthTexture() const { return this->DepthTexture; }
+  void SetDepthTexture(vtkTextureObject* depthTexture);
 
   vtkF3DMainRenderPass(const vtkF3DMainRenderPass&) = delete;
   void operator=(const vtkF3DMainRenderPass&) = delete;

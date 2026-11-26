@@ -69,10 +69,31 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   }
   this->ColorTexture->Resize(size[0], size[1]);
 
+  if (this->ResultTexture == nullptr)
+  {
+    this->ResultTexture = vtkSmartPointer<vtkTextureObject>::New();
+    this->ResultTexture->SetContext(renWin);
+    this->ResultTexture->SetFormat(GL_RGBA);
+    this->ResultTexture->SetInternalFormat(GL_RGBA32F);
+    this->ResultTexture->SetDataType(GL_FLOAT);
+    this->ResultTexture->SetMinificationFilter(vtkTextureObject::Linear);
+    this->ResultTexture->SetMagnificationFilter(vtkTextureObject::Linear);
+    this->ResultTexture->SetWrapS(vtkTextureObject::ClampToEdge);
+    this->ResultTexture->SetWrapT(vtkTextureObject::ClampToEdge);
+    this->ResultTexture->Allocate2D(size[0], size[1], 4, VTK_FLOAT);
+  }
+  this->ResultTexture->Resize(size[0], size[1]);
+
   if (this->FrameBufferObject == nullptr)
   {
     this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
     this->FrameBufferObject->SetContext(renWin);
+  }
+
+  if (this->AccumulateFrameBufferObject == nullptr)
+  {
+    this->AccumulateFrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
+    this->AccumulateFrameBufferObject->SetContext(renWin);
   }
 
   this->ConfigureJitter(size[0], size[1]);
@@ -93,7 +114,6 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   this->DelegatePass->Render(&delegateState);
   this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();
 
-  renWin->GetState()->PopFramebufferBindings();
   this->PostRender(state);
 
   if (!this->QuadHelper)
@@ -130,15 +150,51 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   this->QuadHelper->Program->SetUniformf("blendFactor", blendFactor);
   ostate->vtkglDisable(GL_BLEND);
   ostate->vtkglDisable(GL_DEPTH_TEST);
-  ostate->vtkglClear(GL_DEPTH_BUFFER_BIT);
   ostate->vtkglViewport(pos[0], pos[1], size[0], size[1]);
   ostate->vtkglScissor(pos[0], pos[1], size[0], size[1]);
+
+  this->AccumulateFrameBufferObject->Bind();
+  this->AccumulateFrameBufferObject->AddColorAttachment(0, this->ResultTexture);
+  this->AccumulateFrameBufferObject->StartNonOrtho(size[0], size[1]);
 
   this->QuadHelper->Render();
 
   this->ColorTexture->Deactivate();
   this->HistoryTexture->Deactivate();
-  this->HistoryTexture->CopyFromFrameBuffer(pos[0], pos[1], size[0], size[1], size[0], size[1]);
+
+   renWin->GetState()->PopFramebufferBindings();
+
+  if (!this->ResultQuadHelper)
+  {
+    std::string ResultFS = vtkOpenGLRenderUtilities::GetFullScreenQuadFragmentShaderTemplate();
+    vtkShaderProgram::Substitute(ResultFS, "//VTK::FSQ::Decl",
+      "uniform sampler2D resultTexture;\n"
+      "//VTK::FSQ::Decl");
+
+    vtkShaderProgram::Substitute(ResultFS, "//VTK::FSQ::Impl",
+      "vec4 result = texture(resultTexture, texCoord);\n"
+      "gl_FragData[0] = result;\n"
+      "//VTK::FSQ::Impl");
+    this->ResultQuadHelper =
+      std::make_shared<vtkOpenGLQuadHelper>(renWin, nullptr, ResultFS.c_str(), nullptr);
+    this->ResultQuadHelper->ShaderChangeValue = this->GetMTime();
+  }
+  else
+  {
+    renWin->GetShaderCache()->ReadyShaderProgram(this->ResultQuadHelper->Program);
+  }
+
+  assert(this->ResultQuadHelper->Program && this->ResultQuadHelper->Program->GetCompiled());
+
+  ostate->vtkglEnable(GL_BLEND);
+
+  this->ResultTexture->Activate();
+  this->ResultQuadHelper->Program->SetUniformi("resultTexture", this->ResultTexture->GetTextureUnit());
+  this->ResultQuadHelper->Render();
+  this->ResultTexture->Deactivate();
+
+  std::swap(this->HistoryTexture, this->ResultTexture);
+
   this->HistoryIteration = std::min(this->HistoryIteration + 1, 1024);
 
   vtkOpenGLCheckErrorMacro("failed after Render");
@@ -168,6 +224,10 @@ void vtkF3DTAAPass::ReleaseGraphicsResources(vtkWindow* window)
   {
     this->FrameBufferObject->ReleaseGraphicsResources(window);
   }
+  if (this->AccumulateFrameBufferObject)
+  {
+    this->AccumulateFrameBufferObject->ReleaseGraphicsResources(window);
+  }
   if (this->ColorTexture)
   {
     this->ColorTexture->ReleaseGraphicsResources(window);
@@ -175,6 +235,10 @@ void vtkF3DTAAPass::ReleaseGraphicsResources(vtkWindow* window)
   if (this->HistoryTexture)
   {
     this->HistoryTexture->ReleaseGraphicsResources(window);
+  }
+  if (this->ResultTexture)
+  {
+    this->ResultTexture->ReleaseGraphicsResources(window);
   }
 }
 
