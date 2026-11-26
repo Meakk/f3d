@@ -28,7 +28,7 @@ class vtkF3DDepthPrePass;
 class vtkF3DPostprocessRenderPass;
 class vtkF3DMainRenderPass;
 class vtkF3DReflectionRenderPass;
-class vtkOverlayPass;
+class vtkDefaultPass;
 class vtkTextureObject;
 class vtkCamera;
 class vtkInformationIntegerKey;
@@ -97,7 +97,7 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
-  vtkSmartPointer<vtkOverlayPass> OverlayPass;
+  vtkSmartPointer<vtkDefaultPass> OverlayPass;
   vtkSmartPointer<vtkF3DPostprocessRenderPass> PostprocessPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;

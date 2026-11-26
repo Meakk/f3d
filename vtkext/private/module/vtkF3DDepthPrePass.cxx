@@ -84,6 +84,12 @@ void vtkF3DDepthPrePass::InitializeResources(vtkOpenGLRenderWindow* renWin, int 
   }
   this->NormalTexture->Resize(width, height);
 
+  // the depth texture is shared with other passes and is not resized elsewhere
+  if (this->DepthTexture)
+  {
+    this->DepthTexture->Resize(width, height);
+  }
+
   if (!this->FrameBufferObject)
   {
     this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();

@@ -14,7 +14,6 @@
 #include "vtkF3DStochasticTransparentPass.h"
 #include "vtkF3DTAAPass.h"
 
-#include <vtkOverlayPass.h>
 #include <vtkBoundingBox.h>
 #include <vtkCamera.h>
 #include <vtkCameraPass.h>
@@ -32,9 +31,10 @@
 #include <vtkOpenGLShaderCache.h>
 #include <vtkOpenGLState.h>
 #include <vtkOpenGLVertexBufferObjectGroup.h>
-#include <vtkOverlayPass.h>
+#include <vtkDefaultPass.h>
 #include <vtkPointData.h>
 #include <vtkProp.h>
+#include <vtkProp3D.h>
 #include <vtkRenderPassCollection.h>
 #include <vtkRenderState.h>
 #include <vtkRenderWindow.h>
@@ -134,7 +134,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   this->DepthPrePass->SetDelegatePass(depthSkinningMorphingP);
 
   // overlay pass
-  this->OverlayPass = vtkSmartPointer<vtkOverlayPass>::New();
+  this->OverlayPass = vtkSmartPointer<vtkDefaultPass>::New();
 
   // main pass
   this->MainPass = vtkSmartPointer<vtkF3DMainRenderPass>::New();
@@ -470,7 +470,19 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
   this->PostprocessPass->SetNormalTexture(this->DepthPrePass->GetNormalTexture());
   this->PostprocessPass->Render(s);
 
-  this->OverlayPass->Render(s);
+  std::vector<vtkProp*> overlayProps;
+  vtkProp* const* props = s->GetPropArray();
+  for (int i = 0; i < s->GetPropArrayCount(); i++)
+  {
+    if (!vtkProp3D::SafeDownCast(props[i]))
+    {
+      overlayProps.push_back(props[i]);
+    }
+  }
+  vtkRenderState overlayState(r);
+  overlayState.SetPropArrayAndCount(overlayProps.data(), static_cast<int>(overlayProps.size()));
+  overlayState.SetFrameBuffer(s->GetFrameBuffer());
+  this->OverlayPass->Render(&overlayState);
 
   this->NumberOfRenderedProps = this->MainPass->GetNumberOfRenderedProps();
 
