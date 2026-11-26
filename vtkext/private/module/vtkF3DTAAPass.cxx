@@ -28,6 +28,7 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   vtkOpenGLState* ostate = renWin->GetState();
 
   const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
+  const vtkOpenGLState::ScopedglBlendFuncSeparate bfsaver(ostate);
   const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   assert(this->DelegatePass != nullptr);
@@ -187,6 +188,9 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   assert(this->ResultQuadHelper->Program && this->ResultQuadHelper->Program->GetCompiled());
 
   ostate->vtkglEnable(GL_BLEND);
+
+  // The source texture is premultiplied alpha, we need to change the equation to account for it
+  ostate->vtkglBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
   this->ResultTexture->Activate();
   this->ResultQuadHelper->Program->SetUniformi("resultTexture", this->ResultTexture->GetTextureUnit());
