@@ -109,12 +109,15 @@ graph TD
 
         subgraph Sequence
             direction LR
-            Light -.-> SSAO -.-> Translucency@{ label: "Depth peeling\nStochastic", shape: processes }
+            Light -.-> ModulateSSAO["Modulate SSAO"] -.-> Translucency@{ label: "Depth peeling\nStochastic", shape: processes }
 
-            SSAO --> Opaque["Opaque\n(except skybox/armature)"]
+            ModulateSSAO --> Opaque["Opaque\n(except skybox/armature)"]
             Translucency --> Translucent
             Translucency --> Volume
         end
+
+        DepthPrePass["Depth pre-pass\n(normals, depth)"] --> BakeSSAO["Bake SSAO"]
+        BakeSSAO --> ModulateSSAO
 
         Camera --> Sequence
         TAA --> Camera
@@ -122,7 +125,7 @@ graph TD
     end
 
     classDef optional stroke-dasharray: 5 5
-    class Blur,Reflection,TAA,SSAO,Translucency,FXAA optional
+    class Blur,Reflection,TAA,BakeSSAO,ModulateSSAO,Translucency,FXAA optional
 ```
 
 - A dashed node means it's optional, in which case it's just a passthrough to the next node.

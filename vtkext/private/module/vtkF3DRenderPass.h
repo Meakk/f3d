@@ -4,8 +4,10 @@
  *
  * vtkF3DRenderPass implements the render pass chain of F3D.
  * It first runs a depth pre-pass writing the normals and depth of opaque actors.
+ * If SSAO is enabled, the ambient occlusion is then baked from the buffers of the depth pre-pass.
  * Then it consists of two main passes. The first one renders the background.
- * The second pass renders the dataset with different options (raytracing, SSAO, depth peeling, ...)
+ * The second pass renders the dataset with different options (raytracing, depth peeling, ...),
+ * modulating the color of opaque actors by the baked ambient occlusion if needed.
  * Once the two passes are rendered into textures, a final shader is applied to combine the
  * background (and optionally blur it using Bokeh depth of field) and the dataset image.
  *
@@ -24,6 +26,7 @@
 #include <memory>
 
 class vtkActor;
+class vtkF3DBakeSSAOPass;
 class vtkF3DDepthPrePass;
 class vtkF3DPostprocessRenderPass;
 class vtkF3DMainRenderPass;
@@ -105,6 +108,7 @@ protected:
   vtkSmartPointer<vtkDefaultPass> OverlayPass;
   vtkSmartPointer<vtkF3DPostprocessRenderPass> PostprocessPass;
   vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
+  vtkSmartPointer<vtkF3DBakeSSAOPass> BakeSSAOPass;
   vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;
   vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
   vtkSmartPointer<vtkOpenGLFXAAPass> FXAAPass;

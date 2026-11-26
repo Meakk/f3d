@@ -9,8 +9,8 @@
  * if it passes the depth test.
  * Actors without lighting have no normal available, a normal facing the camera is written for them.
  *
- * The resulting textures are not consumed yet, they are exposed with
- * GetNormalTexture() and GetDepthTexture().
+ * The resulting textures are exposed with GetNormalTexture() and GetDepthTexture(), they are
+ * consumed by vtkF3DBakeSSAOPass and the post-process pass.
  *
  * @sa
  * vtkOpenGLRenderPass

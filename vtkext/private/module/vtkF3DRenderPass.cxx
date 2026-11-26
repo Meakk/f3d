@@ -1,6 +1,7 @@
 #include "vtkF3DRenderPass.h"
 
 #include "F3DLog.h"
+#include "vtkF3DBakeSSAOPass.h"
 #include "vtkF3DDepthPrePass.h"
 #include "vtkF3DPostprocessRenderPass.h"
 #include "vtkF3DFixColorSpacePass.h"
@@ -8,6 +9,7 @@
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPolyDataMapper.h"
 #include "vtkF3DMainRenderPass.h"
+#include "vtkF3DModulateSSAOPass.h"
 #include "vtkF3DReflectionRenderPass.h"
 #include "vtkF3DRenderer.h"
 #include "vtkF3DSkinningMorphingPass.h"
@@ -41,7 +43,6 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
-#include <vtkSSAOPass.h>
 #include <vtkSequencePass.h>
 #include <vtkShaderProgram.h>
 #include <vtkShaderProperty.h>
@@ -92,6 +93,10 @@ void vtkF3DRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   {
     this->DepthPrePass->ReleaseGraphicsResources(w);
   }
+  if (this->BakeSSAOPass)
+  {
+    this->BakeSSAOPass->ReleaseGraphicsResources(w);
+  }
   if (this->BakeReflectionPass)
   {
     this->BakeReflectionPass->ReleaseGraphicsResources(w);
@@ -122,6 +127,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   int* size = glRenderer->GetSize();
 
   this->ReleaseGraphicsResources(glRenderWindow);
+  this->BakeSSAOPass = nullptr;
 
   this->DepthTexture = vtkSmartPointer<vtkTextureObject>::New();
   this->DepthTexture->SetContext(glRenderWindow);
@@ -168,91 +174,100 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   else
 #endif
   {
-    const vtkNew<vtkLightsPass> lightsP;
-    const vtkNew<vtkOpaquePass> opaqueP;
-    const vtkNew<vtkTranslucentPass> translucentP;
-    const vtkNew<vtkVolumetricPass> volumeP;
-
-    // the props rendering passes, wrapped below in the passes modifying their shaders
-    vtkNew<vtkRenderPassCollection> collection;
-
-    // opaque passes
-    if (this->UseSSAOPass)
+    // SSAO is baked from the depth pre-pass buffers
+    const vtkBoundingBox bbox(this->Bounds);
+    if (this->UseSSAOPass && bbox.IsValid())
     {
-      const vtkBoundingBox bbox(this->Bounds);
-      if (bbox.IsValid())
+      this->BakeSSAOPass = vtkSmartPointer<vtkF3DBakeSSAOPass>::New();
+      this->BakeSSAOPass->SetRadius(0.1 * bbox.GetDiagonalLength());
+      this->BakeSSAOPass->SetBias(0.001 * bbox.GetDiagonalLength());
+    }
+
+    bool useDualDepthPeeling =
+      renderer && renderer->GetBlendingMode() == vtkF3DRenderer::BlendingMode::DUAL_DEPTH_PEELING;
+#ifdef F3D_USE_GLES
+    if (useDualDepthPeeling)
+    {
+      F3DLog::Print(F3DLog::Severity::Warning,
+        std::string("Dual depth peeling is not supported on GLES. Ignored."));
+      useDualDepthPeeling = false;
+    }
+#endif
+
+    // the sequence of passes rendering the lit props, optionally modulating the color
+    // of the opaque props by the baked ambient occlusion
+    auto createSequence = [&](bool modulateSSAO)
+    {
+      const vtkNew<vtkLightsPass> lightsP;
+      const vtkNew<vtkOpaquePass> opaqueP;
+      const vtkNew<vtkTranslucentPass> translucentP;
+      const vtkNew<vtkVolumetricPass> volumeP;
+
+      // the props rendering passes, wrapped below in the passes modifying their shaders
+      vtkNew<vtkRenderPassCollection> collection;
+
+      // opaque passes
+      if (modulateSSAO)
       {
-        vtkNew<vtkCameraPass> ssaoCamP;
-        ssaoCamP->SetDelegatePass(opaqueP);
-
-        vtkNew<vtkSSAOPass> ssaoP;
-        ssaoP->SetRadius(0.1 * bbox.GetDiagonalLength());
-        ssaoP->SetBias(0.001 * bbox.GetDiagonalLength());
-        ssaoP->SetKernelSize(200);
-        ssaoP->SetDelegatePass(ssaoCamP);
-
-        collection->AddItem(ssaoP);
+        vtkNew<vtkF3DModulateSSAOPass> modulateSSAOP;
+        modulateSSAOP->SetSSAOTexture(this->BakeSSAOPass->GetSSAOTexture());
+        modulateSSAOP->SetDelegatePass(opaqueP);
+        collection->AddItem(modulateSSAOP);
       }
       else
       {
         collection->AddItem(opaqueP);
       }
-    }
-    else
-    {
-      collection->AddItem(opaqueP);
-    }
 
-    // translucent and volumic
-    if (renderer && renderer->GetBlendingMode() == vtkF3DRenderer::BlendingMode::DUAL_DEPTH_PEELING)
-    {
-#ifdef F3D_USE_GLES
-      F3DLog::Print(F3DLog::Severity::Warning,
-        std::string("Dual depth peeling is not supported on GLES. Ignored."));
-      collection->AddItem(translucentP);
-      collection->AddItem(volumeP);
-#else
-      vtkNew<vtkDualDepthPeelingPass> ddpP;
-      ddpP->SetTranslucentPass(translucentP);
-      ddpP->SetVolumetricPass(volumeP);
-      collection->AddItem(ddpP);
+      // translucent and volumic
+      if (useDualDepthPeeling)
+      {
+#ifndef F3D_USE_GLES
+        vtkNew<vtkDualDepthPeelingPass> ddpP;
+        ddpP->SetTranslucentPass(translucentP);
+        ddpP->SetVolumetricPass(volumeP);
+        collection->AddItem(ddpP);
 #endif
-    }
-    else if (renderer && renderer->GetBlendingMode() == vtkF3DRenderer::BlendingMode::STOCHASTIC)
-    {
-      vtkNew<vtkF3DStochasticTransparentPass> stochasticP;
-      stochasticP->SetTranslucentPass(translucentP);
-      stochasticP->SetVolumetricPass(volumeP);
-      collection->AddItem(stochasticP);
-    }
-    else
-    {
-      collection->AddItem(translucentP);
-      collection->AddItem(volumeP);
-    }
+      }
+      else if (renderer && renderer->GetBlendingMode() == vtkF3DRenderer::BlendingMode::STOCHASTIC)
+      {
+        vtkNew<vtkF3DStochasticTransparentPass> stochasticP;
+        stochasticP->SetTranslucentPass(translucentP);
+        stochasticP->SetVolumetricPass(volumeP);
+        collection->AddItem(stochasticP);
+      }
+      else
+      {
+        collection->AddItem(translucentP);
+        collection->AddItem(volumeP);
+      }
 
-    vtkNew<vtkSequencePass> propsSequence;
-    propsSequence->SetPasses(collection);
+      vtkNew<vtkSequencePass> propsSequence;
+      propsSequence->SetPasses(collection);
 
-    const vtkNew<vtkF3DSkinningMorphingPass> skinningMorphingP;
+      const vtkNew<vtkF3DSkinningMorphingPass> skinningMorphingP;
 
-    if (renderer && !renderer->GetSRGBBlending())
-    {
-      const vtkNew<vtkF3DFixColorSpacePass> fixColorSpaceP;
-      fixColorSpaceP->SetDelegatePass(propsSequence);
-      skinningMorphingP->SetDelegatePass(fixColorSpaceP);
-    }
-    else
-    {
-      skinningMorphingP->SetDelegatePass(propsSequence);
-    }
+      if (renderer && !renderer->GetSRGBBlending())
+      {
+        const vtkNew<vtkF3DFixColorSpacePass> fixColorSpaceP;
+        fixColorSpaceP->SetDelegatePass(propsSequence);
+        skinningMorphingP->SetDelegatePass(fixColorSpaceP);
+      }
+      else
+      {
+        skinningMorphingP->SetDelegatePass(propsSequence);
+      }
 
-    vtkNew<vtkRenderPassCollection> mainCollection;
-    mainCollection->AddItem(lightsP);
-    mainCollection->AddItem(skinningMorphingP);
+      vtkNew<vtkRenderPassCollection> mainCollection;
+      mainCollection->AddItem(lightsP);
+      mainCollection->AddItem(skinningMorphingP);
 
-    vtkNew<vtkSequencePass> sequence;
-    sequence->SetPasses(mainCollection);
+      auto sequence = vtkSmartPointer<vtkSequencePass>::New();
+      sequence->SetPasses(mainCollection);
+      return sequence;
+    };
+
+    const vtkSmartPointer<vtkSequencePass> sequence = createSequence(this->BakeSSAOPass != nullptr);
 
     vtkSmartPointer<vtkRenderPass> mainSequencePass = sequence;
 
@@ -303,7 +318,10 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
 
     // reflection baking pass, same as main pass but with reflected camera
     this->BakeReflectionPass = vtkSmartPointer<vtkF3DReflectionRenderPass>::New();
-    this->BakeReflectionPass->SetDelegatePass(sequence);
+
+    // the ambient occlusion is baked for the main camera, it does not apply to the reflection
+    this->BakeReflectionPass->SetDelegatePass(
+      this->BakeSSAOPass && this->RenderReflection && renderer ? createSequence(false) : sequence);
 
     if (this->RenderReflection && renderer)
     {
@@ -480,6 +498,13 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
       depthPrePassState.SetFrameBuffer(s->GetFrameBuffer());
 
       this->DepthPrePass->Render(&depthPrePassState);
+
+      if (this->BakeSSAOPass)
+      {
+        this->BakeSSAOPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());
+        this->BakeSSAOPass->SetNormalTexture(this->DepthPrePass->GetNormalTexture());
+        this->BakeSSAOPass->Render(&depthPrePassState);
+      }
     }
 
     const vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(r);
