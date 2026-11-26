@@ -269,7 +269,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
       shadowBakeP->SetDelegatePass(camP);
 
       const vtkNew<vtkShadowMapPass> shadowP;
-      shadowP->SetDelegatePass(camP);
+      shadowP->SetDelegatePass(sequence);
       shadowP->SetShadowMapBakerPass(shadowBakeP);
 
       vtkNew<vtkRenderPassCollection> collectionShadows;
