@@ -81,6 +81,7 @@ f3d_test(NAME TestDisplayDepth DATA dragon.vtu ARGS --display-depth)
 f3d_test(NAME TestDisplayDepthColorMap DATA dragon.vtu ARGS --display-depth --coloring-mode=scivis --coloring-scalar-bar=True)
 f3d_test(NAME TestDisplayDepthCustomColorMap DATA dragon.vtu ARGS --display-depth --coloring-mode=scivis --colormap=0,red,1,blue)
 f3d_test(NAME TestDisplayDepthWithGrid DATA cow.vtp ARGS --display-depth -g)
+f3d_test(NAME TestDisplayDepthDeprecated DATA dragon.vtu ARGS --display-depth NO_BASELINE REGEXP "Option 'display-depth' is deprecated, use 'final-shader' with a shader sampling the 'texDepth' and 'texColorMap' textures instead")
 
 # DPI scaling
 f3d_test(NAME TestDPI125 DATA dragon.vtu ARGS -nm --dpi-aware DPI_SCALE 1.25 UI)

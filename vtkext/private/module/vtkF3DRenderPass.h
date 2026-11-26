@@ -18,6 +18,7 @@
 #ifndef vtkF3DRenderPass_h
 #define vtkF3DRenderPass_h
 
+#include <vtkDiscretizableColorTransferFunction.h>
 #include <vtkOpenGLQuadHelper.h>
 #include <vtkOpenGLRenderPass.h>
 #include <vtkSmartPointer.h>
@@ -57,6 +58,7 @@ public:
   vtkSetMacro(UseBlurBackground, bool);
   vtkSetMacro(UseToneMappingPass, bool);
   vtkSetMacro(UserShader, std::string);
+  vtkSetSmartPointerMacro(ColorMap, vtkDiscretizableColorTransferFunction);
   vtkSetMacro(ForceOpaqueBackground, bool);
   vtkSetVector6Macro(Bounds, double);
   vtkSetMacro(CircleOfConfusionRadius, double);
@@ -96,6 +98,7 @@ protected:
   bool UseBlurBackground = false;
   bool UseToneMappingPass = false;
   std::string UserShader;
+  vtkSmartPointer<vtkDiscretizableColorTransferFunction> ColorMap;
   bool ForceOpaqueBackground = false;
   bool RenderReflection = false;
   bool XRMode = false;

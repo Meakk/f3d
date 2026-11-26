@@ -7,7 +7,6 @@
 #include "F3DUtils.h"
 #include "vtkF3DCachedLUTTexture.h"
 #include "vtkF3DCachedSpecularTexture.h"
-#include "vtkF3DDisplayDepthRenderPass.h"
 #include "vtkF3DInteractorStyle.h"
 #include "vtkF3DOpenGLGridMapper.h"
 #include "vtkF3DPointSplatMapper.h"
@@ -23,7 +22,6 @@
 #include <vtkCamera.h>
 #include <vtkCameraOrientationRepresentation.h>
 #include <vtkCameraOrientationWidget.h>
-#include <vtkCameraPass.h>
 #include <vtkCellData.h>
 #include <vtkConeSource.h>
 #include <vtkCornerAnnotation.h>
@@ -47,7 +45,6 @@
 #include <vtkMatrix4x4.h>
 #include <vtkMultiBlockDataSet.h>
 #include <vtkObjectFactory.h>
-#include <vtkOpaquePass.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkOpenGLRenderer.h>
@@ -118,6 +115,15 @@ namespace
 constexpr double ScalarBarPositionX = 0.1;
 constexpr double ScalarBarPositionY = 0.01;
 constexpr double ScalarBarHeight = 0.07;
+
+// Final shader displaying the depth buffer, using the color map if any, as grayscale otherwise.
+// The color map is already in sRGB, while the final shader output is expected in linear space.
+constexpr std::string_view DisplayDepthShader =
+  "vec4 pixel(vec2 uv)\n"
+  "{\n"
+  "  float depth = texture(texDepth, uv).r;\n"
+  "  return vec4(pow(texture(texColorMap, vec2(depth, 0.5)).rgb, vec3(2.2)), 1.0);\n"
+  "}\n";
 
 //----------------------------------------------------------------------------
 // Compute the MD5 hash of an existing file on disk
@@ -546,6 +552,19 @@ void vtkF3DRenderer::ConfigureRenderPasses()
         F3DLog::Severity::Warning, "Final shader must define a function named \"pixel\"");
     }
   }
+  if (this->DisplayDepth)
+  {
+    newPass->SetUserShader(std::string(::DisplayDepthShader));
+  }
+
+  if (this->Coloring == vtkF3DRenderer::ColoringMode::SCIVIS)
+  {
+    if (this->DisplayDepth)
+    {
+      this->ConfigureColoringAndVisibilities();
+    }
+    newPass->SetColorMap(this->ColorTransferFunction);
+  }
   newPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
   newPass->SetForceOpaqueBackground(this->HDRISkyboxVisible);
   newPass->SetArmatureVisible(this->ArmatureVisible);
@@ -559,26 +578,7 @@ void vtkF3DRenderer::ConfigureRenderPasses()
   this->ComputeVisiblePropBounds(bounds);
   newPass->SetBounds(bounds);
 
-  // Image post processing passes
-  vtkSmartPointer<vtkRenderPass> renderingPass = newPass;
-
-  if (this->DisplayDepth)
-  {
-    // discard vtkF3DRenderPass if displaying depth
-    const vtkNew<vtkOpaquePass> opaqueP;
-    vtkNew<vtkCameraPass> camP;
-    vtkNew<vtkF3DDisplayDepthRenderPass> depthP;
-    camP->SetDelegatePass(opaqueP);
-    depthP->SetDelegatePass(camP);
-    if (this->Coloring == vtkF3DRenderer::ColoringMode::SCIVIS)
-    {
-      this->ConfigureColoringAndVisibilities();
-      depthP->SetColorMap(this->ColorTransferFunction);
-    }
-    renderingPass = depthP;
-  }
-
-  this->SetPass(renderingPass);
+  this->SetPass(newPass);
 
 #if F3D_MODULE_RAYTRACING
   vtkOSPRayRendererNode::SetRendererType("pathtracer", this);

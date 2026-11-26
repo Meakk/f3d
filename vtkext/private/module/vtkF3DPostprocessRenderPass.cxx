@@ -3,6 +3,7 @@
 #include "vtkF3DPostprocessFS.h"
 #include "vtkF3DRenderer.h"
 
+#include <vtkDiscretizableColorTransferFunction.h>
 #include <vtkObjectFactory.h>
 #include <vtkOpenGLError.h>
 #include <vtkOpenGLQuadHelper.h>
@@ -15,6 +16,7 @@
 #include <vtkShaderProgram.h>
 #include <vtkTextureObject.h>
 
+#include <array>
 #include <sstream>
 
 vtkStandardNewMacro(vtkF3DPostprocessRenderPass);
@@ -32,6 +34,68 @@ void vtkF3DPostprocessRenderPass::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "ColorTexture: " << this->ColorTexture << "\n";
   os << indent << "DepthTexture: " << this->DepthTexture << "\n";
   os << indent << "NormalTexture: " << this->NormalTexture << "\n";
+  os << indent << "ColorMap: " << this->ColorMap << "\n";
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DPostprocessRenderPass::SetColorMap(vtkDiscretizableColorTransferFunction* colorMap)
+{
+  if (this->ColorMap != colorMap)
+  {
+    this->ColorMap = colorMap;
+    this->ColorMapTextureValid = false;
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
+vtkDiscretizableColorTransferFunction* vtkF3DPostprocessRenderPass::GetColorMap() const
+{
+  return this->ColorMap;
+}
+
+//------------------------------------------------------------------------------
+void vtkF3DPostprocessRenderPass::UpdateColorMapTexture(vtkOpenGLRenderWindow* renWin)
+{
+  if (!this->ColorMapTexture)
+  {
+    this->ColorMapTexture = vtkSmartPointer<vtkTextureObject>::New();
+    this->ColorMapTexture->SetContext(renWin);
+    this->ColorMapTexture->SetWrapS(vtkTextureObject::ClampToEdge);
+    this->ColorMapTexture->SetWrapT(vtkTextureObject::ClampToEdge);
+    this->ColorMapTexture->SetMinificationFilter(vtkTextureObject::Linear);
+    this->ColorMapTexture->SetMagnificationFilter(vtkTextureObject::Linear);
+    this->ColorMapTexture->SetFormat(GL_RGB);
+    this->ColorMapTexture->SetInternalFormat(GL_RGB16F);
+    this->ColorMapTexture->SetDataType(GL_FLOAT);
+  }
+
+  const bool upToDate = this->ColorMapTexture->GetHandle() && this->ColorMapTextureValid &&
+    (!this->ColorMap || this->ColorMapBuildTime.GetMTime() > this->ColorMap->GetMTime());
+  if (upToDate)
+  {
+    return;
+  }
+
+  constexpr int tableSize = 256;
+  std::array<float, tableSize * 3> table;
+  if (this->ColorMap)
+  {
+    double range[2];
+    this->ColorMap->GetRange(range);
+    this->ColorMap->GetTable(range[0], range[1], tableSize, table.data());
+  }
+  else
+  {
+    for (int i = 0; i < tableSize; i++)
+    {
+      table[3 * i] = table[3 * i + 1] = table[3 * i + 2] = i / static_cast<float>(tableSize - 1);
+    }
+  }
+
+  this->ColorMapTexture->Create2DFromRaw(tableSize, 1, 3, VTK_FLOAT, table.data());
+  this->ColorMapTextureValid = true;
+  this->ColorMapBuildTime.Modified();
 }
 
 //------------------------------------------------------------------------------
@@ -43,6 +107,13 @@ void vtkF3DPostprocessRenderPass::ReleaseGraphicsResources(vtkWindow* w)
   {
     this->QuadHelper->ReleaseGraphicsResources(w);
     this->QuadHelper = nullptr;
+  }
+
+  if (this->ColorMapTexture)
+  {
+    this->ColorMapTexture->ReleaseGraphicsResources(w);
+    this->ColorMapTexture = nullptr;
+    this->ColorMapTextureValid = false;
   }
 }
 
@@ -128,6 +199,10 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
     this->QuadHelper->Program->SetUniformi("texNormal", this->NormalTexture->GetTextureUnit());
   }
 
+  this->UpdateColorMapTexture(renWin);
+  this->ColorMapTexture->Activate();
+  this->QuadHelper->Program->SetUniformi("texColorMap", this->ColorMapTexture->GetTextureUnit());
+
   this->QuadHelper->Program->SetUniform2i("resolution", renWin->GetSize());
   this->QuadHelper->Program->SetUniformf("ssaaScale", static_cast<float>(this->ResolutionScale));
 
@@ -151,6 +226,7 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
   this->QuadHelper->Render();
 
   this->ColorTexture->Deactivate();
+  this->ColorMapTexture->Deactivate();
   if (this->DepthTexture)
   {
     this->DepthTexture->Deactivate();

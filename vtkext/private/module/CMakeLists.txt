@@ -113,7 +113,6 @@ set(classes
   vtkF3DStochasticTransparentPass
   vtkF3DUIObserver
   vtkF3DUIActor
-  vtkF3DDisplayDepthRenderPass
   vtkF3DTAAPass
   vtkF3DPreserveCameraFramebufferPass
   )

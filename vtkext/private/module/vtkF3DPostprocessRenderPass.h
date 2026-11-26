@@ -5,7 +5,10 @@
  * vtkF3DPostprocessRenderPass draws a full screen quad sampling the color texture on the
  * framebuffer of the render state, with blending and depth test disabled.
  * The depth and normal textures are optional and made available to the shader.
- * Textures are not owned by the pass, they should be set before each render.
+ * A color map texture is always made available to the shader, it is built from the color map if
+ * any, a black to white ramp otherwise.
+ * The color, depth and normal textures are not owned by the pass, they should be set before each
+ * render.
  *
  * @sa
  * vtkRenderPass
@@ -15,11 +18,15 @@
 #define vtkF3DPostprocessRenderPass_h
 
 #include <vtkRenderPass.h>
+#include <vtkSmartPointer.h>
+#include <vtkTimeStamp.h>
 
 #include <memory>
 #include <string>
 
+class vtkDiscretizableColorTransferFunction;
 class vtkOpenGLQuadHelper;
+class vtkOpenGLRenderWindow;
 class vtkTextureObject;
 
 class vtkF3DPostprocessRenderPass : public vtkRenderPass
@@ -68,6 +75,14 @@ public:
   vtkTextureObject* GetNormalTexture() const { return this->NormalTexture; }
   ///@}
 
+  /**
+   * Set/Get the optional color map available to the shader as a 256x1 texture, sampled using
+   * values in the [0, 1] range.
+   * If not set, the texture is a black to white ramp.
+   */
+  void SetColorMap(vtkDiscretizableColorTransferFunction* colorMap);
+  vtkDiscretizableColorTransferFunction* GetColorMap() const;
+
   vtkF3DPostprocessRenderPass(const vtkF3DPostprocessRenderPass&) = delete;
   void operator=(const vtkF3DPostprocessRenderPass&) = delete;
 
@@ -79,6 +94,13 @@ protected:
   vtkTextureObject* ColorTexture = nullptr;
   vtkTextureObject* DepthTexture = nullptr;
   vtkTextureObject* NormalTexture = nullptr;
+
+  void UpdateColorMapTexture(vtkOpenGLRenderWindow* renWin);
+
+  vtkSmartPointer<vtkDiscretizableColorTransferFunction> ColorMap;
+  vtkSmartPointer<vtkTextureObject> ColorMapTexture;
+  vtkTimeStamp ColorMapBuildTime;
+  bool ColorMapTextureValid = false;
 
   bool ColorInputIsLinear = true;
   bool UseToneMapping = false;

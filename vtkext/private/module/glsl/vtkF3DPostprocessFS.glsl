@@ -7,6 +7,7 @@ in vec2 texCoord;
 uniform sampler2D texColor;
 uniform sampler2D texDepth;
 uniform sampler2D texNormal;
+uniform sampler2D texColorMap;
 
 uniform ivec2 resolution;
 uniform float time;
