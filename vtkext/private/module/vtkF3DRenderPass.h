@@ -3,8 +3,11 @@
  * @brief   Implement the basic render passes.
  *
  * vtkF3DRenderPass implements the render pass chain of F3D.
- * It consists of two main passes. The first one renders the background.
- * The second pass renders the dataset with different options (raytracing, SSAO, depth peeling, ...)
+ * It first runs a depth pre-pass writing the normals and depth of opaque actors.
+ * If SSAO is enabled, the ambient occlusion is then baked from the buffers of the depth pre-pass.
+ * Then it consists of two main passes. The first one renders the background.
+ * The second pass renders the dataset with different options (raytracing, depth peeling, ...),
+ * modulating the color of opaque actors by the baked ambient occlusion if needed.
  * Once the two passes are rendered into textures, a final shader is applied to combine the
  * background (and optionally blur it using Bokeh depth of field) and the dataset image.
  *
@@ -15,17 +18,25 @@
 #ifndef vtkF3DRenderPass_h
 #define vtkF3DRenderPass_h
 
-#include "vtkF3DPreserveCameraFramebufferPass.h"
-
+#include <vtkDiscretizableColorTransferFunction.h>
 #include <vtkOpenGLQuadHelper.h>
 #include <vtkOpenGLRenderPass.h>
 #include <vtkSmartPointer.h>
 #include <vtkTimeStamp.h>
 
 #include <memory>
-#include <vector>
 
 class vtkActor;
+class vtkF3DBakeSSAOPass;
+class vtkF3DDepthPrePass;
+class vtkF3DPostprocessRenderPass;
+class vtkF3DMainRenderPass;
+class vtkF3DReflectionRenderPass;
+class vtkF3DRenderer;
+class vtkSequencePass;
+class vtkDefaultPass;
+class vtkOpenGLFXAAPass;
+class vtkTextureObject;
 class vtkCamera;
 class vtkInformationIntegerKey;
 class vtkAbstractMapper;
@@ -47,6 +58,9 @@ public:
   vtkSetMacro(UseAnari, bool);
   vtkSetMacro(UseSSAOPass, bool);
   vtkSetMacro(UseBlurBackground, bool);
+  vtkSetMacro(UseToneMappingPass, bool);
+  vtkSetMacro(UserShader, std::string);
+  vtkSetSmartPointerMacro(ColorMap, vtkDiscretizableColorTransferFunction);
   vtkSetMacro(ForceOpaqueBackground, bool);
   vtkSetVector6Macro(Bounds, double);
   vtkSetMacro(CircleOfConfusionRadius, double);
@@ -58,7 +72,7 @@ public:
   vtkSetMacro(AnariLibrary, std::string);
 
   /**
-   * Modify shader code for matcap/gamma/skinning
+   * Modify shader code for matcap/gamma
    */
   bool PreReplaceShaderValues(std::string& vertexShader, std::string& geometryShader,
     std::string& fragmentShader, vtkAbstractMapper* mapper, vtkProp* prop) override;
@@ -78,9 +92,13 @@ protected:
 
   void Initialize(const vtkRenderState* s);
 
-  void Blend(const vtkRenderState* s);
-
-  void ReflectCamera(vtkCamera* originalCam, vtkMatrix4x4* actorMatrix, vtkCamera* reflectedCam);
+  /**
+   * Create the sequence of passes rendering the lit props (opaque, translucent and volumetric).
+   * If modulateSSAO is true, the opaque props are modulated by the ambient occlusion baked by
+   * BakeSSAOPass.
+   */
+  vtkSmartPointer<vtkSequencePass> CreatePropsSequence(
+    vtkF3DRenderer* renderer, bool useDualDepthPeeling, bool modulateSSAO);
 
   bool ArmatureVisible = false;
   bool UseRaytracing = false;
@@ -88,6 +106,9 @@ protected:
   std::string AnariLibrary = "environment";
   bool UseSSAOPass = false;
   bool UseBlurBackground = false;
+  bool UseToneMappingPass = false;
+  std::string UserShader;
+  vtkSmartPointer<vtkDiscretizableColorTransferFunction> ColorMap;
   bool ForceOpaqueBackground = false;
   bool RenderReflection = false;
   bool XRMode = false;
@@ -97,27 +118,23 @@ protected:
 
   double CircleOfConfusionRadius = 20.0;
 
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BackgroundPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> BakeReflectionPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> MainPass;
-  vtkSmartPointer<vtkF3DPreserveCameraFramebufferPass> MainOnTopPass;
+  vtkSmartPointer<vtkDefaultPass> OverlayPass;
+  vtkSmartPointer<vtkF3DPostprocessRenderPass> PostprocessPass;
+  vtkSmartPointer<vtkF3DDepthPrePass> DepthPrePass;
+  vtkSmartPointer<vtkF3DBakeSSAOPass> BakeSSAOPass;
+  vtkSmartPointer<vtkF3DReflectionRenderPass> BakeReflectionPass;
+  vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
+  vtkSmartPointer<vtkOpenGLFXAAPass> FXAAPass;
+
+  // depth texture reused in many passes
+  vtkSmartPointer<vtkTextureObject> DepthTexture;
 
   double Bounds[6] = {};
 
   vtkMTimeType InitializeTime = 0;
 
-  int LightComplexity = 0;
-
-  std::vector<vtkProp*> BackgroundProps;
-  std::vector<vtkProp*> MainOnTopProps;
-  std::vector<vtkProp*> MainProps;
-  std::vector<vtkProp*> ReflectionProps;
-
-  std::shared_ptr<vtkOpenGLQuadHelper> BlendQuadHelper;
-
 private:
   void ReplaceMatCapShader(std::string& fragmentShader, vtkActor* actor, vtkPolyData* polyData);
-  void ReplaceSkinningMorphing(std::string& vertexShader, vtkActor* actor, vtkPolyData* polyData);
 };
 
 #endif
