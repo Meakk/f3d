@@ -7,11 +7,12 @@
 
 #include <vtkRenderState.h>
 #include <vtkRenderer.h>
+#include <vtkOpenGLRenderer.h>
 #include <vtkOpenGLState.h>
-#include <vtkOpenGLFramebufferObject.h>
 #include <vtk_glad.h>
 
 #include <cmath>
+#include <optional>
 
 namespace vtkF3DRenderPassUtils
 {
@@ -45,6 +46,7 @@ enum DepthTest
 {
   DepthTestNone,
   DepthTestLEqual
+  // TODO: reverse-z will be implemented later
 };
 
 enum Blend
@@ -54,88 +56,78 @@ enum Blend
   BlendPremultiplied
 };
 
-struct FramebufferOptions
+struct RenderOptions
 {
-  int Width = -1;
-  int Height = -1;
   DepthTest DepthTestMode = DepthTestNone;
   Blend BlendMode = BlendNone;
-  bool ClearColor = false;
-  bool ClearDepth = false;
+  std::optional<std::array<float, 4>> ClearColor = std::nullopt;
+  std::optional<float> ClearDepth = std::nullopt;
+  bool WriteDepth = false;
+  int Width = -1;
+  int Height = -1;
 };
 
-struct ScopedFramebuffer
+inline void SetRenderOptions(vtkOpenGLRenderer* ren, RenderOptions options)
 {
-  ScopedFramebuffer(vtkOpenGLFramebufferObject* fbo, vtkOpenGLState* ostate, FramebufferOptions options)
-    : State(ostate)
+  vtkOpenGLState* ostate = ren->GetState();
+
+  // Set depth test mode
+  switch (options.DepthTestMode)
   {
-    // TODO: possible improvements:
-    // - Do not push/pop and just bind the FBO directly
-    // - StartNonOrtho checks too many things
-    this->State->PushFramebufferBindings();
-    fbo->StartNonOrtho(options.Width, options.Height);
-
-    // Set depth test mode
-    switch (options.DepthTestMode)
-    {
-      case DepthTestNone:
-        this->State->vtkglDisable(GL_DEPTH_TEST);
-        break;
-      case DepthTestLEqual:
-        this->State->vtkglEnable(GL_DEPTH_TEST);
-        this->State->vtkglDepthFunc(GL_LEQUAL);
-        break;
-    }
-
-    // Set blend mode
-    switch (options.BlendMode)
-    {
-      case BlendNone:
-        this->State->vtkglDisable(GL_BLEND);
-        break;
-      case BlendStraight:
-        this->State->vtkglEnable(GL_BLEND);
-        this->State->vtkglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        break;
-      case BlendPremultiplied:
-        this->State->vtkglEnable(GL_BLEND);
-        this->State->vtkglBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        break;
-    }
-
-    unsigned int clearMask = 0;
-
-    if (options.ClearColor)
-    {
-      clearMask |= GL_COLOR_BUFFER_BIT;
-    }
-    if (options.ClearDepth)
-    {
-      clearMask |= GL_DEPTH_BUFFER_BIT;
-    }
-
-    if (clearMask != 0)
-    {
-      this->State->vtkglClear(clearMask);
-    }
-
-    this->State->vtkglDisable(GL_SCISSOR_TEST);
-    this->State->vtkglDisable(GL_STENCIL_TEST);
-
-    ostate->vtkglViewport(0, 0, options.Width, options.Height);
+    case DepthTestNone:
+      ostate->vtkglDisable(GL_DEPTH_TEST);
+      break;
+    case DepthTestLEqual:
+      ostate->vtkglEnable(GL_DEPTH_TEST);
+      ostate->vtkglDepthFunc(GL_LEQUAL);
+      break;
   }
 
-  ~ScopedFramebuffer()
+  // Set blend mode
+  switch (options.BlendMode)
   {
-    this->State->PopFramebufferBindings();
+    case BlendNone:
+      ostate->vtkglDisable(GL_BLEND);
+      break;
+    case BlendStraight:
+      ostate->vtkglEnable(GL_BLEND);
+      ostate->vtkglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+      break;
+    case BlendPremultiplied:
+      ostate->vtkglEnable(GL_BLEND);
+      ostate->vtkglBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+      break;
   }
 
-  ScopedFramebuffer(const ScopedFramebuffer&) = delete;
-  ScopedFramebuffer& operator=(const ScopedFramebuffer&) = delete;
+  // Must be set before clearing
+  ostate->vtkglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  ostate->vtkglDepthMask(options.WriteDepth ? GL_TRUE : GL_FALSE);
+  ostate->vtkglViewport(0, 0, options.Width, options.Height);
+  ostate->vtkglDisable(GL_SCISSOR_TEST);
+  ostate->vtkglDisable(GL_STENCIL_TEST);
 
-private:
-  vtkOpenGLState* State;
-};
+  unsigned int clearMask = 0;
+
+  if (options.ClearColor.has_value())
+  {
+    ostate->vtkglClearColor(
+      options.ClearColor.value()[0],
+      options.ClearColor.value()[1],
+      options.ClearColor.value()[2],
+      options.ClearColor.value()[3]);
+    clearMask |= GL_COLOR_BUFFER_BIT;
+  }
+  if (options.ClearDepth.has_value())
+  {
+    ostate->vtkglClearDepth(options.ClearDepth.value());
+    clearMask |= GL_DEPTH_BUFFER_BIT;
+  }
+
+  if (clearMask != 0)
+  {
+    ostate->vtkglClear(clearMask);
+  }
+}
 
 }
 

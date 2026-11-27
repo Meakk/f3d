@@ -1,6 +1,7 @@
 #include "vtkF3DPostprocessRenderPass.h"
 
 #include "vtkF3DPostprocessFS.h"
+#include "vtkF3DRenderPassUtils.h"
 #include "vtkF3DRenderer.h"
 
 #include <vtkDiscretizableColorTransferFunction.h>
@@ -132,11 +133,7 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
 
   vtkRenderer* r = s->GetRenderer();
   vtkOpenGLRenderWindow* renWin = static_cast<vtkOpenGLRenderWindow*>(r->GetRenderWindow());
-  vtkOpenGLState* ostate = renWin->GetState();
   vtkF3DRenderer* ren = vtkF3DRenderer::SafeDownCast(r);
-
-  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
-  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   if (!this->QuadHelper)
   {
@@ -215,13 +212,17 @@ void vtkF3DPostprocessRenderPass::Render(const vtkRenderState* s)
     this->QuadHelper->Program->SetUniformf("time", ren->GetTotalTime());
   }
 
-  ostate->vtkglEnable(GL_BLEND);
-  ostate->vtkglBlendFuncSeparate(
-    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  double bgColor[3];
+  r->GetBackground(bgColor);
 
-  ostate->vtkglDisable(GL_DEPTH_TEST);
+  int* size = renWin->GetSize();
 
-  r->Clear();
+  vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(r),
+    { .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .ClearColor = std::array<float, 4>{ static_cast<float>(bgColor[0]),
+        static_cast<float>(bgColor[1]), static_cast<float>(bgColor[2]), 0.0f },
+      .Width = size[0],
+      .Height = size[1] });
 
   this->QuadHelper->Render();
 

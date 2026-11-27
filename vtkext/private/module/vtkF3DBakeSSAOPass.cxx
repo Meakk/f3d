@@ -166,8 +166,11 @@ void vtkF3DBakeSSAOPass::Render(const vtkRenderState* s)
   vtkNew<vtkMatrix4x4> invProjection;
   vtkMatrix4x4::Invert(projection, invProjection);
 
-  vtkF3DRenderPassUtils::ScopedFramebuffer scopedFBO(
-    this->FrameBufferObject, renWin->GetState(), { .Width = width, .Height = height });
+  renWin->GetState()->PushFramebufferBindings();
+
+  this->FrameBufferObject->StartNonOrtho(width, height);
+
+  vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(r), { .Width = width, .Height = height });
 
   renWin->GetShaderCache()->ReadyShaderProgram(ssaoProgram);
 
@@ -186,6 +189,8 @@ void vtkF3DBakeSSAOPass::Render(const vtkRenderState* s)
 
   this->NormalTexture->Deactivate();
   this->DepthTexture->Deactivate();
+
+  renWin->GetState()->PopFramebufferBindings();
 
   vtkOpenGLCheckErrorMacro("failed after Render");
 }

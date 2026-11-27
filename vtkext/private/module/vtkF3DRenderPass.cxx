@@ -198,21 +198,11 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   vtkF3DRenderer* renderer = vtkF3DRenderer::SafeDownCast(glRenderer);
   vtkOpenGLRenderWindow* glRenderWindow = vtkOpenGLRenderWindow::SafeDownCast(glRenderer->GetRenderWindow());
 
-  int* size = glRenderer->GetSize();
-
   this->ReleaseGraphicsResources(glRenderWindow);
   this->BakeSSAOPass = nullptr;
 
-  this->DepthTexture = vtkSmartPointer<vtkTextureObject>::New();
-  this->DepthTexture->SetContext(glRenderWindow);
-  this->DepthTexture->AllocateDepth(size[0], size[1], vtkTextureObject::Float32);
-  // samples outside of the screen must not wrap, the SSAO relies on it
-  this->DepthTexture->SetWrapS(vtkTextureObject::ClampToEdge);
-  this->DepthTexture->SetWrapT(vtkTextureObject::ClampToEdge);
-
-  // depth pre-pass, write normals and depth of opaque actors
+  // depth pre-pass, write normals and depth of opaque actors, it owns the depth texture
   this->DepthPrePass = vtkSmartPointer<vtkF3DDepthPrePass>::New();
-  this->DepthPrePass->SetDepthTexture(this->DepthTexture);
 
   const vtkNew<vtkOpaquePass> depthOpaqueP;
 
@@ -230,7 +220,7 @@ void vtkF3DRenderPass::Initialize(const vtkRenderState* s)
   this->MainPass->SetUseRaytracing(this->UseRaytracing);
   this->MainPass->SetUseBlurBackground(this->UseBlurBackground);
   this->MainPass->SetCircleOfConfusionRadius(this->CircleOfConfusionRadius);
-  this->MainPass->SetDepthTexture(this->DepthTexture);
+  this->MainPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());
 
 #if F3D_MODULE_RAYTRACING
   if (this->UseRaytracing)
@@ -473,6 +463,10 @@ bool vtkF3DRenderPass::PostReplaceShaderValues([[maybe_unused]] std::string& ver
 // ----------------------------------------------------------------------------
 void vtkF3DRenderPass::Render(const vtkRenderState* s)
 {
+  vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(s->GetRenderer()->GetRenderWindow());
+  vtkOpenGLState* ostate = renWin->GetState();
+  ostate->PushFramebufferBindings();
+
   this->PreRender(s);
 
   this->Initialize(s);
@@ -525,6 +519,10 @@ void vtkF3DRenderPass::Render(const vtkRenderState* s)
 
   // restore background color before the postprocess pass
   r->SetBackground(bgColor);
+
+  // FXAA requires the default framebuffer to be bound
+  // TODO: apply FXAA in the post-process directly with our own shader
+  ostate->PopFramebufferBindings();
 
   this->PostprocessPass->SetColorTexture(this->MainPass->GetColorTexture());
   this->PostprocessPass->SetDepthTexture(this->DepthPrePass->GetDepthTexture());

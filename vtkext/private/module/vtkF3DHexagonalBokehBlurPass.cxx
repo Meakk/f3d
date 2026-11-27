@@ -1,5 +1,6 @@
 #include "vtkF3DHexagonalBokehBlurPass.h"
 
+#include "vtkF3DRenderPassUtils.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLFramebufferObject.h"
@@ -276,9 +277,6 @@ void vtkF3DHexagonalBokehBlurPass::Render(const vtkRenderState* s)
   vtkOpenGLRenderWindow* renWin = static_cast<vtkOpenGLRenderWindow*>(r->GetRenderWindow());
   vtkOpenGLState* ostate = renWin->GetState();
 
-  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
-  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
-
   assert(this->DelegatePass != nullptr);
 
   // create FBO and texture
@@ -299,16 +297,19 @@ void vtkF3DHexagonalBokehBlurPass::Render(const vtkRenderState* s)
   this->VerticalBlurTexture->Resize(w, h);
   this->DiagonalBlurTexture->Resize(w, h);
 
-  ostate->vtkglViewport(x, y, w, h);
-  ostate->vtkglScissor(x, y, w, h);
+  vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(r);
+
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .Width = w, .Height = h });
 
   this->RenderDelegate(s, w, h);
 
-  ostate->vtkglDisable(GL_BLEND);
-  ostate->vtkglDisable(GL_DEPTH_TEST);
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .Width = w, .Height = h });
   this->RenderDirectionalBlur(renWin, w, h);
 
-  ostate->vtkglEnable(GL_DEPTH_TEST);
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .Width = w, .Height = h });
   this->RenderRhomboidBlur(renWin, w, h);
 
   vtkOpenGLCheckErrorMacro("failed after Render");

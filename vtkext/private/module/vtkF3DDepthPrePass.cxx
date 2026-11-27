@@ -36,7 +36,12 @@ constexpr std::string_view OCTAHEDRAL_ENCODE =
 }
 
 //------------------------------------------------------------------------------
-vtkF3DDepthPrePass::vtkF3DDepthPrePass() = default;
+vtkF3DDepthPrePass::vtkF3DDepthPrePass()
+{
+  this->NormalTexture = vtkSmartPointer<vtkTextureObject>::New();
+  this->DepthTexture = vtkSmartPointer<vtkTextureObject>::New();
+  this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
+}
 
 //------------------------------------------------------------------------------
 vtkF3DDepthPrePass::~vtkF3DDepthPrePass() = default;
@@ -62,53 +67,32 @@ void vtkF3DDepthPrePass::SetDelegatePass(vtkRenderPass* delegate)
 //------------------------------------------------------------------------------
 void vtkF3DDepthPrePass::InitializeResources(vtkOpenGLRenderWindow* renWin, int width, int height)
 {
-  if (!this->NormalTexture)
-  {
-    this->NormalTexture = vtkSmartPointer<vtkTextureObject>::New();
-  }
   this->NormalTexture->SetContext(renWin);
   if (!this->NormalTexture->GetHandle())
   {
     this->NormalTexture->SetFormat(GL_RG);
-#ifdef F3D_USE_GLES
-    // RG16 is not available on GLES, use the half float equivalent
-    this->NormalTexture->SetInternalFormat(GL_RG16F);
-    this->NormalTexture->SetDataType(GL_FLOAT);
-    const int dataType = VTK_FLOAT;
-#else
+    // TODO: is RG8 sufficient for normals encoding? (RG16 not available on GLES)
     this->NormalTexture->SetInternalFormat(GL_RG16);
     this->NormalTexture->SetDataType(GL_UNSIGNED_SHORT);
-    const int dataType = VTK_UNSIGNED_SHORT;
-#endif
     this->NormalTexture->SetMinificationFilter(vtkTextureObject::Nearest);
     this->NormalTexture->SetMagnificationFilter(vtkTextureObject::Nearest);
     this->NormalTexture->SetWrapS(vtkTextureObject::ClampToEdge);
     this->NormalTexture->SetWrapT(vtkTextureObject::ClampToEdge);
-    this->NormalTexture->Allocate2D(width, height, 2, dataType);
+    this->NormalTexture->Allocate2D(width, height, 2, VTK_UNSIGNED_SHORT);
   }
   this->NormalTexture->Resize(width, height);
 
   // the depth texture is shared with other passes and is not resized elsewhere
-  if (this->DepthTexture)
+  this->DepthTexture->SetContext(renWin);
+  if (!this->DepthTexture->GetHandle())
   {
-    this->DepthTexture->Resize(width, height);
+    this->DepthTexture->AllocateDepth(width, height, vtkTextureObject::Float32);
+    this->DepthTexture->SetWrapS(vtkTextureObject::ClampToEdge);
+    this->DepthTexture->SetWrapT(vtkTextureObject::ClampToEdge);
   }
+  this->DepthTexture->Resize(width, height);
 
-  if (!this->FrameBufferObject)
-  {
-    this->FrameBufferObject = vtkSmartPointer<vtkOpenGLFramebufferObject>::New();
-  }
   this->FrameBufferObject->SetContext(renWin);
-}
-
-//------------------------------------------------------------------------------
-void vtkF3DDepthPrePass::SetDepthTexture(vtkTextureObject* depthTexture)
-{
-  if (this->DepthTexture != depthTexture)
-  {
-    this->DepthTexture = depthTexture;
-    this->Modified();
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -157,10 +141,6 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
   s2.SetPropArrayAndCount(this->OpaqueProps.data(), static_cast<int>(this->OpaqueProps.size()));
   s2.SetFrameBuffer(fbo);
 
-  // StartNonOrtho does not set the viewport, which can be larger than the window with supersampling
-  const vtkOpenGLState::ScopedglViewport viewportSaver(ostate);
-  const vtkOpenGLState::ScopedglScissor scissorSaver(ostate);
-
   ostate->PushFramebufferBindings();
 
   fbo->Bind();
@@ -168,8 +148,6 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
   fbo->ActivateDrawBuffer(0);
   fbo->AddDepthAttachment(this->DepthTexture);
   fbo->StartNonOrtho(width, height);
-  ostate->vtkglViewport(0, 0, width, height);
-  ostate->vtkglScissor(0, 0, width, height);
 
   {
     const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
@@ -179,13 +157,14 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
     const vtkOpenGLState::ScopedglColorMask cmsaver(ostate);
     const vtkOpenGLState::ScopedglClearColor ccsaver(ostate);
 
-    ostate->vtkglDisable(GL_BLEND);
-    ostate->vtkglEnable(GL_DEPTH_TEST);
-
-    ostate->vtkglDepthMask(GL_TRUE);
-    ostate->vtkglClearColor(0.0, 0.0, 0.0, 0.0);
-    ostate->vtkglClearDepth(1.0);
-    ostate->vtkglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(r),
+      { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+        .BlendMode = vtkF3DRenderPassUtils::BlendNone,
+        .ClearColor = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },
+        .ClearDepth = 1.f,
+        .WriteDepth = true,
+        .Width = width,
+        .Height = height });
 
     // register this pass on the props so PostReplaceShaderValues is called for them
     this->PreRender(&s2);
@@ -201,8 +180,8 @@ void vtkF3DDepthPrePass::Render(const vtkRenderState* s)
 }
 
 //------------------------------------------------------------------------------
-bool vtkF3DDepthPrePass::PostReplaceShaderValues(std::string&, std::string&,
-  std::string& fragmentShader, vtkAbstractMapper*, vtkProp*)
+bool vtkF3DDepthPrePass::PostReplaceShaderValues(
+  std::string&, std::string&, std::string& fragmentShader, vtkAbstractMapper*, vtkProp*)
 {
   // vtkF3DRenderPass can be registered on the same props, only modify the shader when
   // the final color token is available
@@ -221,8 +200,7 @@ bool vtkF3DDepthPrePass::PostReplaceShaderValues(std::string&, std::string&,
   const std::string normal = hasNormal ? "normalize(normalVCVSOutput)" : "vec3(0.0, 0.0, 1.0)";
 
   vtkShaderProgram::Substitute(fragmentShader, outputToken,
-    "  gl_FragData[0] = vec4(octahedralEncode(" + normal + "), 0.0, 1.0);\n  " + outputToken +
-      "\n",
+    "  gl_FragData[0] = vec4(octahedralEncode(" + normal + "), 0.0, 1.0);\n  " + outputToken + "\n",
     false);
 
   return true;
@@ -240,5 +218,9 @@ void vtkF3DDepthPrePass::ReleaseGraphicsResources(vtkWindow* w)
   if (this->NormalTexture)
   {
     this->NormalTexture->ReleaseGraphicsResources(w);
+  }
+  if (this->DepthTexture)
+  {
+    this->DepthTexture->ReleaseGraphicsResources(w);
   }
 }

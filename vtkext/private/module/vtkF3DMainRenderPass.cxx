@@ -176,18 +176,16 @@ void vtkF3DMainRenderPass::RenderOnTopProps(
   }
   this->OnTopDepthTexture->Resize(width, height);
 
-  vtkOpenGLState* ostate = renWin->GetState();
-  const vtkOpenGLState::ScopedglDepthMask dmsaver(ostate);
-  const vtkOpenGLState::ScopedglDepthFunc dfsaver(ostate);
-
   // swap the depth buffer so the main one is not modified
   this->FrameBufferObject->AddDepthAttachment(this->OnTopDepthTexture);
 
-  ostate->vtkglEnable(GL_DEPTH_TEST);
-  ostate->vtkglDepthFunc(GL_LEQUAL);
-  ostate->vtkglDepthMask(GL_TRUE);
-  ostate->vtkglClearDepth(1.0);
-  ostate->vtkglClear(GL_DEPTH_BUFFER_BIT);
+  vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(r),
+    { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+      .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .ClearDepth = 1.f,
+      .WriteDepth = true,
+      .Width = width,
+      .Height = height });
 
   for (vtkProp* prop : this->MainOnTopProps)
   {
@@ -200,8 +198,7 @@ void vtkF3DMainRenderPass::RenderOnTopProps(
 }
 
 //------------------------------------------------------------------------------
-void vtkF3DMainRenderPass::InitializeResources(
-  vtkOpenGLRenderWindow* renWin, int width, int height)
+void vtkF3DMainRenderPass::InitializeResources(vtkOpenGLRenderWindow* renWin, int width, int height)
 {
   assert(this->DepthTexture);
 
@@ -249,10 +246,6 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
 
   vtkRenderer* r = s->GetRenderer();
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(r->GetRenderWindow());
-  vtkOpenGLState* ostate = renWin->GetState();
-
-  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
-  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   int width = 0;
   int height = 0;
@@ -273,42 +266,47 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
     this->ReflectionPass->Render(&reflState);
   }
 
-  // StartNonOrtho does not set the viewport, which can be larger than the window with supersampling
-  const vtkOpenGLState::ScopedglViewport viewportSaver(ostate);
-  const vtkOpenGLState::ScopedglScissor scissorSaver(ostate);
-
-  ostate->PushFramebufferBindings();
+  renWin->GetState()->PushFramebufferBindings();
 
   this->FrameBufferObject->Bind();
   this->FrameBufferObject->AddColorAttachment(0, this->ColorTexture);
   this->FrameBufferObject->AddDepthAttachment(this->DepthTexture);
   this->FrameBufferObject->StartNonOrtho(width, height);
-  ostate->vtkglViewport(0, 0, width, height);
-  ostate->vtkglScissor(0, 0, width, height);
 
-  ostate->vtkglEnable(GL_BLEND);
-  ostate->vtkglBlendFuncSeparate(
-    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  vtkOpenGLRenderer* glRenderer = vtkOpenGLRenderer::SafeDownCast(r);
 
   // do not clear the depth buffer, it comes from the prepass
-  ostate->vtkglClearColor(0.0, 0.0, 0.0, 0.0);
-  ostate->vtkglClear(GL_COLOR_BUFFER_BIT);
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+      .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .ClearColor = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },
+      .Width = width,
+      .Height = height });
 
   vtkRenderState s2(s->GetRenderer());
   s2.SetFrameBuffer(this->FrameBufferObject);
 
-  // TODO: if TAA only?
-  ostate->vtkglDisable(GL_DEPTH_TEST);
+  // TODO: disable depth test if TAA only? clear color if no skybox only?
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestNone,
+      .ClearColor = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },
+      .Width = width,
+      .Height = height });
 
   // render skybox
   // will use the depth buffer from the prepass to limit overdraw
   // must be run first for proper compositing with the main translucent props
-  s2.SetPropArrayAndCount(this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
+  s2.SetPropArrayAndCount(
+    this->BackgroundProps.data(), static_cast<int>(this->BackgroundProps.size()));
   this->BackgroundPass->Render(&s2);
   this->NumberOfRenderedProps += this->BackgroundPass->GetNumberOfRenderedProps();
 
-  ostate->vtkglEnable(GL_DEPTH_TEST);
-  ostate->vtkglEnable(GL_BLEND);
+  vtkF3DRenderPassUtils::SetRenderOptions(glRenderer,
+    { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+      .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .WriteDepth = true, // needed? maybe with stochastic?
+      .Width = width,
+      .Height = height });
 
   // render main props
   s2.SetPropArrayAndCount(this->MainProps.data(), static_cast<int>(this->MainProps.size()));
@@ -318,7 +316,7 @@ void vtkF3DMainRenderPass::Render(const vtkRenderState* s)
   // render "on top" props, depth tested between themselves only
   this->RenderOnTopProps(r, renWin, width, height);
 
-  ostate->PopFramebufferBindings();
+  renWin->GetState()->PopFramebufferBindings();
 
   vtkOpenGLCheckErrorMacro("failed after Render");
 }

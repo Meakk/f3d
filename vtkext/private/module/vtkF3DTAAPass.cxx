@@ -1,5 +1,7 @@
 #include "vtkF3DTAAPass.h"
 
+#include "vtkF3DRenderPassUtils.h"
+
 #include <vtkCamera.h>
 #include <vtkObjectFactory.h>
 #include <vtkOpenGLError.h>
@@ -26,10 +28,6 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   vtkRenderer* renderer = state->GetRenderer();
   vtkOpenGLRenderWindow* renWin = vtkOpenGLRenderWindow::SafeDownCast(renderer->GetRenderWindow());
   vtkOpenGLState* ostate = renWin->GetState();
-
-  const vtkOpenGLState::ScopedglEnableDisable bsaver(ostate, GL_BLEND);
-  const vtkOpenGLState::ScopedglBlendFuncSeparate bfsaver(ostate);
-  const vtkOpenGLState::ScopedglEnableDisable dsaver(ostate, GL_DEPTH_TEST);
 
   assert(this->DelegatePass != nullptr);
 
@@ -110,7 +108,15 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   this->FrameBufferObject->AddDepthAttachment();
   this->FrameBufferObject->StartNonOrtho(size[0], size[1]);
 
-  renderer->Clear();
+  vtkF3DRenderPassUtils::SetRenderOptions(
+    vtkOpenGLRenderer::SafeDownCast(renderer), {
+      .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+      .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .ClearColor = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },
+      .ClearDepth = 1.f,
+      .WriteDepth = true,
+      .Width = size[0], .Height = size[1]
+    });
 
   this->DelegatePass->Render(&delegateState);
   this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();
@@ -149,10 +155,8 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
 
   const float blendFactor = this->HistoryIteration / (this->HistoryIteration + 1.0f);
   this->QuadHelper->Program->SetUniformf("blendFactor", blendFactor);
-  ostate->vtkglDisable(GL_BLEND);
-  ostate->vtkglDisable(GL_DEPTH_TEST);
-  ostate->vtkglViewport(pos[0], pos[1], size[0], size[1]);
-  ostate->vtkglScissor(pos[0], pos[1], size[0], size[1]);
+  vtkF3DRenderPassUtils::SetRenderOptions(
+    vtkOpenGLRenderer::SafeDownCast(renderer), { .Width = size[0], .Height = size[1] });
 
   this->AccumulateFrameBufferObject->Bind();
   this->AccumulateFrameBufferObject->AddColorAttachment(0, this->ResultTexture);
@@ -163,7 +167,7 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
   this->ColorTexture->Deactivate();
   this->HistoryTexture->Deactivate();
 
-   renWin->GetState()->PopFramebufferBindings();
+  renWin->GetState()->PopFramebufferBindings();
 
   if (!this->ResultQuadHelper)
   {
@@ -187,13 +191,15 @@ void vtkF3DTAAPass::Render(const vtkRenderState* state)
 
   assert(this->ResultQuadHelper->Program && this->ResultQuadHelper->Program->GetCompiled());
 
-  ostate->vtkglEnable(GL_BLEND);
-
   // The source texture is premultiplied alpha, we need to change the equation to account for it
-  ostate->vtkglBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(renderer),
+    { .BlendMode = vtkF3DRenderPassUtils::BlendPremultiplied,
+      .Width = size[0],
+      .Height = size[1] });
 
   this->ResultTexture->Activate();
-  this->ResultQuadHelper->Program->SetUniformi("resultTexture", this->ResultTexture->GetTextureUnit());
+  this->ResultQuadHelper->Program->SetUniformi(
+    "resultTexture", this->ResultTexture->GetTextureUnit());
   this->ResultQuadHelper->Render();
   this->ResultTexture->Deactivate();
 

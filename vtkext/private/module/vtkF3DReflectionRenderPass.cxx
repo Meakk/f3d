@@ -145,25 +145,26 @@ void vtkF3DReflectionRenderPass::Render(const vtkRenderState* s)
     this->ReflectedProps.data(), static_cast<int>(this->ReflectedProps.size()));
   s2.SetFrameBuffer(fbo);
 
-  // StartNonOrtho does not set the viewport, which can be larger than the window with supersampling
-  const vtkOpenGLState::ScopedglViewport viewportSaver(ostate);
-  const vtkOpenGLState::ScopedglScissor scissorSaver(ostate);
-
   ostate->PushFramebufferBindings();
 
   fbo->Bind();
   fbo->AddColorAttachment(0, this->ColorTexture);
   fbo->AddDepthAttachment(this->DepthTexture);
   fbo->StartNonOrtho(width, height);
-  ostate->vtkglViewport(0, 0, width, height);
-  ostate->vtkglScissor(0, 0, width, height);
 
   const vtkSmartPointer<vtkCamera> originalCam = r->GetActiveCamera();
   const vtkNew<vtkCamera> reflectedCam;
   this->ReflectCamera(originalCam, reflectedCam);
   r->SetActiveCamera(reflectedCam);
 
-  r->Clear();
+  vtkF3DRenderPassUtils::SetRenderOptions(vtkOpenGLRenderer::SafeDownCast(r),
+    { .DepthTestMode = vtkF3DRenderPassUtils::DepthTestLEqual,
+      .BlendMode = vtkF3DRenderPassUtils::BlendStraight,
+      .ClearColor = std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f},
+      .ClearDepth = 1.f,
+      .WriteDepth = true,
+      .Width = width,
+      .Height = height });
 
   this->DelegatePass->Render(&s2);
   this->NumberOfRenderedProps = this->DelegatePass->GetNumberOfRenderedProps();

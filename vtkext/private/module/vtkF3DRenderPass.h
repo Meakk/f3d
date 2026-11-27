@@ -126,9 +126,6 @@ protected:
   vtkSmartPointer<vtkF3DMainRenderPass> MainPass;
   vtkSmartPointer<vtkOpenGLFXAAPass> FXAAPass;
 
-  // depth texture reused in many passes
-  vtkSmartPointer<vtkTextureObject> DepthTexture;
-
   double Bounds[6] = {};
 
   vtkMTimeType InitializeTime = 0;

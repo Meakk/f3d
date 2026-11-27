@@ -55,10 +55,9 @@ public:
   vtkTextureObject* GetNormalTexture() const { return this->NormalTexture; }
 
   /**
-   * Get the 24 bits depth texture.
+   * Get the depth texture, owned by this pass and shared with the other passes.
    */
   vtkTextureObject* GetDepthTexture() const { return this->DepthTexture; }
-  void SetDepthTexture(vtkTextureObject* depthTexture);
 
   /**
    * Replace the fragment shader output by the octahedrally encoded normal.
